@@ -37,20 +37,20 @@ export function buildBlockedBookingPayload({
   endTime = "18:00",
   note = "",
 }) {
-  if (!placeId) throw new Error("Выберите место.");
-  if (!startDate) throw new Error("Выберите день или диапазон дней.");
+  if (!placeId) throw new Error("cal_err_place");
+  if (!startDate) throw new Error("cal_err_date");
 
   const normalizedEndDate = endDate || startDate;
-  if (normalizedEndDate < startDate) throw new Error("Дата окончания должна быть после даты начала.");
+  if (normalizedEndDate < startDate) throw new Error("cal_err_range");
 
   let startDateTime;
   let endDateTime;
   let durationType;
 
   if (mode === "hourly") {
-    if (normalizedEndDate !== startDate) throw new Error("Почасовая блокировка доступна только для одного дня.");
+    if (normalizedEndDate !== startDate) throw new Error("cal_err_hourly_range");
     if (!/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime) || endTime <= startTime) {
-      throw new Error("Время окончания должно быть позже времени начала.");
+      throw new Error("cal_err_time");
     }
     startDateTime = `${startDate}T${startTime}:00`;
     endDateTime = `${startDate}T${endTime}:00`;

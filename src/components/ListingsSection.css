@@ -470,13 +470,6 @@
   padding-bottom: 0.3em;
 }
 
-.title-curve {
-  position: absolute;
-  left: calc(50% - 1.2em - 0.45em);
-  bottom: -0.02em;
-  width: 2.4em;
-  height: 0.24em;
-}
 
 .agents-head p {
   max-width: 620px;

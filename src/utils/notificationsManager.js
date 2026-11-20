@@ -62,7 +62,7 @@ export function getNotificationTarget(notification = {}, role = "client") {
 
   if (type.startsWith("booking_")) {
     if (isAdmin) return { hash: "/admin", adminPage: "bookings" };
-    return { hash: role === "partner" ? "/host-today" : "/profile" };
+    return { hash: role === "partner" ? "/host-listings" : "/profile" };
   }
 
   if (type === "tariff_activated") {

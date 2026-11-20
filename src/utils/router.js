@@ -8,7 +8,7 @@ export const STATIC_ROUTES = new Set([
   "home", "filter", "partner", "profile", "profile-edit", "settings",
   "about-us", "mobile-info", "partner-guide", "host-today",
   "host-calendar", "host-listings", "host-messages", "host-tariffs", "register",
-  "login", "forgot", "verify", "admin",
+  "login", "forgot", "verify", "admin", "sale-variants",
 ]);
 const DYNAMIC_ROUTE_PREFIXES = ["space-", "agent-", "book-"];
 const ROUTE_CHANGE_EVENT = "joyzone-route-change";

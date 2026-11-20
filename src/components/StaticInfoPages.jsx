@@ -1,18 +1,21 @@
 import { cmsList, mailHref, phoneHref, socialLinks } from "../utils/cmsLinks.js";
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import api, { getAccessToken, getApiErrorMessage } from "../api/client.js";
 import { LanguageContext, useSiteContent } from "../context/LanguageContext.jsx";
 import { cacheProfile } from "../utils/profileMapper.js";
 import PaymentModal from "./PaymentModal.jsx";
 import logoImage from "../assets/img/Logo.png";
 import "./StaticInfoPages.css";
-import "./partner/partnerGuide.css";
+import "./partner/partnerPromoPage.css";
 import BecomePartnerForm from "./partner/BecomePartnerForm.jsx";
-import { GUIDE_TEXT } from "./partner/guideText.js";
+import { PROMO_TEXT } from "./partner/promoPageText.js";
+import { PromoHeroMock, PromoScene } from "./partner/PromoScenes.jsx";
+import AccentTitle from "./ui/AccentTitle.jsx";
 import { partnerEntryHref, useAccountRole } from "../utils/partnerAccess.js";
 import { getPlacesFromApiResponse, normalizePlace } from "../utils/placeMapper.js";
 import { ABOUT_TEXT } from "./about/aboutText.js";
 import "./about/aboutPage.css";
+import LiveStats from "./about/LiveStats.jsx";
 import { navigate } from "../utils/router.js";
 
 function PageIcon({ type }) {
@@ -24,7 +27,8 @@ function PageIcon({ type }) {
     building: ["M5 21V8l7-4 7 4v13", "M9 21v-5h6v5", "M9 10h.01M12 10h.01M15 10h.01M9 13h.01M12 13h.01M15 13h.01"],
     check: ["M20 6 9 17l-5-5"],
     chat: ["M12 3.2c5 0 9 3.6 9 8s-4 8-9 8c-1.1 0-2.1-.2-3.1-.5L4.4 20.8l1.3-3.9C4 15.4 3 13.4 3 11.2c0-4.4 4-8 9-8Z", "M7.4 11.2a.6.6 0 1 0 1.2 0 .6.6 0 1 0-1.2 0", "M11.4 11.2a.6.6 0 1 0 1.2 0 .6.6 0 1 0-1.2 0", "M15.4 11.2a.6.6 0 1 0 1.2 0 .6.6 0 1 0-1.2 0"],
-    eye: ["M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z", "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"],
+    users: ["M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20", "M10 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z", "M20 20v-1.5a3.5 3.5 0 0 0-2.6-3.4", "M15.5 4.6a3.5 3.5 0 0 1 0 6.8"],
+    search: ["M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z", "m20 20-4-4"],
     phone: ["M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.7.6 2.5a2 2 0 0 1-.5 2.1L8 9.6a16 16 0 0 0 6.4 6.4l1.3-1.3a2 2 0 0 1 2.1-.5c.8.3 1.6.5 2.5.6a2 2 0 0 1 1.7 2.1Z"],
     mail: ["M4 6h16v12H4z", "m4 7 8 6 8-6"],
     arrow: ["M5 12h14", "m13 6 6 6-6 6"],
@@ -35,7 +39,8 @@ function PageIcon({ type }) {
 
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      {(paths[type] || paths.spark).map((path) => (
+      {/* "eye" may still be saved in the CMS; it now draws the people icon. */}
+      {(paths[type === "eye" ? "users" : type] || paths.spark).map((path) => (
         <path key={path} d={path} />
       ))}
     </svg>
@@ -109,21 +114,14 @@ function AboutUsPage() {
         </div>
       </section>
 
-      <section className="ab-stats" aria-label="Joyzone raqamlari">
-        {cmsList(cms, "about_stats_arr").map(({ value, label }) => (
-          <div key={label}>
-            <strong>{value}</strong>
-            <span>{label}</span>
-          </div>
-        ))}
-      </section>
+      <LiveStats labels={t.stats} lang={lang} />
 
       <section className="ab-section">
         <header className="ab-head">
           <h2>{t.forTitle}</h2>
         </header>
         <div className="ab-audiences">
-          {[["renters", "/filter", "eye"], ["owners", partnerHref, "building"]].map(([key, href, icon]) => {
+          {[["renters", "/filter", "search"], ["owners", partnerHref, "building"]].map(([key, href, icon]) => {
             const block = t[key];
             return (
               <article key={key} className={`ab-audience is-${key}`}>
@@ -194,140 +192,220 @@ function AboutUsPage() {
   );
 }
 
+// Adds "is-in" to every .op-reveal block once it scrolls into view.
+function useReveal(rootRef, deps) {
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return undefined;
+    const nodes = [...root.querySelectorAll(".op-reveal:not(.is-in)")];
+    if (!("IntersectionObserver" in window)) {
+      nodes.forEach((node) => node.classList.add("is-in"));
+      return undefined;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("is-in");
+        observer.unobserve(entry.target);
+      });
+    }, { threshold: 0.15, rootMargin: "0px 0px -40px 0px" });
+    nodes.forEach((node) => observer.observe(node));
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+}
+
+// Owners' promo page: what Joyzone gives owners, agents and business centers.
 function PartnerGuidePage() {
   const { cms } = useSiteContent();
   const { lang } = useContext(LanguageContext);
-  const t = GUIDE_TEXT[lang] || GUIDE_TEXT.uz;
+  const t = PROMO_TEXT[lang] || PROMO_TEXT.uz;
   const account = useAccountRole();
   const isPartner = account.isAuthed && account.canListPlaces;
+  const [tab, setTab] = useState(0);
+  const rootRef = useRef(null);
+  useReveal(rootRef, [lang]);
 
-  // /partner-guide#become (from buttons and the promo) opens on the form.
+  const audience = t.audiences[tab] || t.audiences[0];
+  const helpTelegram = socialLinks(cms).find(([type]) => type === "telegram");
+  const terms = cmsList(cms, "partner_terms_arr");
+  const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const startCta = () => (isPartner ? navigate("/partner") : scrollTo("become"));
+
+  // Arriving on /partner-guide#become is handled by App (it opens on the form).
+  // A "Become a partner" link clicked while already here scrolls smoothly.
   useEffect(() => {
-    if (window.location.hash !== "#become") return undefined;
-    const timer = setTimeout(() => document.getElementById("become")?.scrollIntoView({ behavior: "smooth", block: "start" }), 350);
-    return () => clearTimeout(timer);
+    const onRoute = () => {
+      if (window.location.hash === "#become") scrollTo("become");
+    };
+    window.addEventListener("joyzone-route-change", onRoute);
+    return () => window.removeEventListener("joyzone-route-change", onRoute);
   }, []);
 
-  const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-
   return (
-    <main className="static-page pg">
+    <main className="static-page op" ref={rootRef}>
       <BackButton />
 
-      <section className="pg-hero">
-        <div className="pg-hero-copy">
-          <h1>{cms.partner_guide_title}</h1>
-          <p>{cms.partner_guide_text}</p>
-          <div className="pg-actions">
-            {isPartner ? (
-              <button type="button" className="bp-btn is-primary" onClick={() => navigate("/partner")}>{t.addPlaceCta}<PageIcon type="arrow" /></button>
-            ) : (
-              <button type="button" className="bp-btn is-primary" onClick={() => scrollTo("become")}>{t.becomeCta}<PageIcon type="arrow" /></button>
-            )}
-            <button type="button" className="bp-btn is-ghost" onClick={() => scrollTo("tariffs")}>{t.tariffsCta}</button>
+      <section className="op-hero">
+        <div className="op-hero-copy">
+          <h1><AccentTitle text={t.heroTitle} highlight={t.heroHighlight} /></h1>
+          <p>{t.heroText}</p>
+          <div className="op-actions">
+            <button type="button" className="bp-btn is-primary" onClick={startCta}>
+              {isPartner ? t.add : t.start}<PageIcon type="arrow" />
+            </button>
+            <button type="button" className="bp-btn is-ghost" onClick={() => scrollTo("tariffs")}>{t.tariffs}</button>
           </div>
-          <ul className="pg-metrics" aria-label="Partner jarayoni">
-            <li><strong>{cms.guide_metric1_value}</strong>{cms.guide_metric1_label}</li>
-            <li><strong>{cms.guide_metric2_value}</strong>{cms.guide_metric2_label}</li>
-            <li><strong>{cms.guide_metric3_value}</strong>{cms.guide_metric3_label}</li>
-          </ul>
-        </div>
-
-        <div className="pg-cabinet" aria-hidden="true">
-          <div className="pg-cabinet-top">
-            <span className="pg-dots"><i /><i /><i /></span>
-            <strong>{t.cabinetTitle}</strong>
-          </div>
-          <div className="pg-cabinet-stats">
-            {t.cabinetStats.map(([label, value]) => (
-              <div key={label}><b>{value}</b><small>{label}</small></div>
-            ))}
-          </div>
-          <ul className="pg-requests">
-            {t.cabinetRequests.map(([title, time], index) => (
-              <li key={title} style={{ "--i": index }}>
-                <span className="pg-request-avatar">{title[0]}</span>
-                <span><strong>{title}</strong><small>{time}</small></span>
-                <i />
+          <ul className="op-facts">
+            {t.facts.map((fact, index) => (
+              <li key={fact.value} style={{ "--i": index }}>
+                <strong>{fact.value}</strong>
+                <small>{fact.label}</small>
               </li>
             ))}
           </ul>
-          <span className="pg-cabinet-ping"><PageIcon type="spark" />{t.cabinetNew}</span>
+        </div>
+        <PromoHeroMock m={t.mock} />
+      </section>
+
+      <section className="op-section op-audience op-reveal">
+        <div className="op-tabs" role="tablist" aria-label={t.tabsLabel}>
+          {t.audiences.map((item, index) => (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={index === tab}
+              className={index === tab ? "is-active" : undefined}
+              onClick={() => setTab(index)}
+            >
+              {item.tab}
+            </button>
+          ))}
+        </div>
+        <div className="op-audience-body" key={audience.id} role="tabpanel">
+          <h2>{audience.title}</h2>
+          <div className="op-cards">
+            {audience.cards.map((card, index) => (
+              <article key={card.scene} className="op-card" style={{ "--i": index }}>
+                <PromoScene type={card.scene} s={t.scene} />
+                <p>{card.text}</p>
+              </article>
+            ))}
+          </div>
+          <ul className="op-perks">
+            {audience.points.map((point, index) => (
+              <li key={point} style={{ "--i": index }}><PageIcon type="check" />{point}</li>
+            ))}
+          </ul>
         </div>
       </section>
 
-      <section className="pg-section">
-        <header className="pg-head">
-          <h2>{t.whyTitle}</h2>
+      <section className="op-section op-reveal">
+        <header className="op-head">
+          <h2><AccentTitle text={t.featuresTitle} /></h2>
         </header>
-        <div className="pg-why">
-          {t.why.map((item) => (
-            <article key={item.title}>
-              <span className="pg-why-icon"><PageIcon type={item.icon} /></span>
-              <h3>{item.title}</h3>
-              <p>{item.text}</p>
+        <div className="op-features">
+          {t.features.map((item, index) => (
+            <article key={item.title} style={{ "--i": index }}>
+              <span className="op-feature-icon"><PageIcon type={item.icon} /></span>
+              <div>
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
+              </div>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="pg-section pg-process">
-        <aside className="pg-process-side">
-          <h2>{cms.guide_sidebar_title}</h2>
-          <p>{cms.guide_sidebar_text}</p>
-        </aside>
-        <ol className="pg-steps">
-          {cmsList(cms, "guide_steps_arr").map((item) => (
-            <li key={item.step}>
-              <span className="pg-step-num">{item.step}</span>
-              <div>
-                <h3>{item.title}</h3>
-                <p>{item.text}</p>
-                {item.deliverable ? <b>{item.deliverable}</b> : null}
-              </div>
-            </li>
-          ))}
-        </ol>
+      <section className="op-section op-duo op-reveal">
+        <div className="op-duo-stats">
+          <h2><AccentTitle text={t.statsTitle} highlight="Joyzone" /></h2>
+          <p>{t.statsText}</p>
+          <LiveStats labels={t.stats} lang={lang} />
+        </div>
+        <div className="op-duo-steps">
+          <h2><AccentTitle text={t.stepsTitle} highlight={t.stepsHighlight} /></h2>
+          <ol className="op-steps">
+            {t.steps.map((step, index) => (
+              <li key={step.title} style={{ "--i": index }}>
+                <b>{index + 1}</b>
+                <div>
+                  <h3>{step.title}</h3>
+                  <p>{step.text}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
       </section>
 
-      <section className="pg-section pg-become" id="become">
-        <div className="pg-become-copy">
+      <TariffPlansSection />
+
+      {terms.length ? (
+        <section className="op-section op-reveal" id="terms">
+          <header className="op-head">
+            <h2>{cms.partner_terms_title}</h2>
+            {cms.partner_terms_text ? <p>{cms.partner_terms_text}</p> : null}
+          </header>
+          <div className="op-terms">
+            {terms.map((term, index) => (
+              <article key={term.title} style={{ "--i": index }}>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <h3>{term.title}</h3>
+                <p>{term.text}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <section className="op-section op-become" id="become">
+        <span className="op-orb is-c" aria-hidden="true" />
+        <div className="op-become-copy">
           <h2>{t.becomeTitle}</h2>
           <p>{t.becomeText}</p>
-          <h3>{t.afterTitle}</h3>
-          <ol className="pg-after">
-            {t.after.map((line) => <li key={line}>{line}</li>)}
-          </ol>
-          {cms.guide_next_text ? (
-            <div className="pg-note">
-              <PageIcon type="check" />
-              <span><strong>{cms.guide_next_kicker}</strong>{cms.guide_next_text}</span>
+          <ul className="op-points">
+            {t.becomePoints.map((point) => <li key={point}><PageIcon type="check" />{point}</li>)}
+          </ul>
+          {cms.footer_phone || helpTelegram ? (
+            <div className="op-help">
+              <span className="op-help-icon"><PageIcon type="chat" /></span>
+              <span className="op-help-copy"><strong>{t.helpTitle}</strong>{t.helpText}</span>
+              <span className="op-help-links">
+                {cms.footer_phone ? <a href={phoneHref(cms.footer_phone)} aria-label={cms.footer_phone}><PageIcon type="phone" /></a> : null}
+                {helpTelegram ? <a href={helpTelegram[2]} target="_blank" rel="noreferrer" aria-label={helpTelegram[1]}><PageIcon type="telegram" /></a> : null}
+              </span>
             </div>
           ) : null}
         </div>
         <BecomePartnerForm />
       </section>
-
-      <section className="pg-section">
-        <header className="pg-head">
-          <h2>{cms.partner_terms_title}</h2>
-          <p>{cms.partner_terms_text}</p>
-        </header>
-        <div className="pg-terms">
-          {cmsList(cms, "partner_terms_arr").map((term, index) => (
-            <article key={term.title}>
-              <span>{String(index + 1).padStart(2, "0")}</span>
-              <h3>{term.title}</h3>
-              <p>{term.text}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <TariffPlansSection />
     </main>
   );
 }
+
+// Interface words of the tariff block (plan names and features come from the API).
+const TARIFF_TEXT = {
+  uz: {
+    places: "ta joy", days: "kun", start: "Bepul boshlash", choose: "Tanlash", loading: "Yuklanmoqda…",
+    empty: "Hozircha tariflar yo'q.", chosen: "tarifi tanlandi!", ok: "Yaxshi",
+    loadError: "Tariflarni yuklab bo'lmadi.", activateError: "Tarifni faollashtirib bo'lmadi.",
+    footnote: "Barcha tariflarda moderatsiya bir xil • Tarifni istalgan vaqtda o'zgartirish mumkin",
+  },
+  ru: {
+    places: "мест", days: "дней", start: "Начать бесплатно", choose: "Выбрать", loading: "Загрузка…",
+    empty: "Тарифов пока нет.", chosen: "— тариф выбран!", ok: "Хорошо",
+    loadError: "Не удалось загрузить тарифы.", activateError: "Не удалось активировать тариф.",
+    footnote: "Модерация одинакова для всех тарифов • Тариф можно сменить в любое время",
+  },
+  en: {
+    places: "places", days: "days", start: "Start for free", choose: "Choose", loading: "Loading…",
+    empty: "No plans yet.", chosen: "plan selected!", ok: "Great",
+    loadError: "Could not load the plans.", activateError: "Could not activate the plan.",
+    footnote: "Moderation is the same on every plan • You can change your plan any time",
+  },
+};
 
 function TariffPlansSection() {
   const [tariffs, setTariffs] = useState([]);
@@ -339,6 +417,7 @@ function TariffPlansSection() {
   const [paymentTarget, setPaymentTarget] = useState(null);
   const { lang, content } = useContext(LanguageContext);
   const cms = content?.[lang] || {};
+  const tt = TARIFF_TEXT[lang] || TARIFF_TEXT.uz;
 
   const FALLBACK = [
     {
@@ -358,7 +437,7 @@ function TariffPlansSection() {
     {
       id: 3, slug: 'premium', name: 'Premium', name_ru: 'Премиум',
       price: 199000, max_places: 10, is_free: false, duration_days: 30,
-      features: ["10 ta faol e'lon", "Premium badge", "API integratsiya", "Ustuvor moderatsiya", "Shaxsiy menejer"],
+      features: ["10 ta faol e'lon", "Premium belgisi", "API integratsiya", "Ustuvor moderatsiya", "Shaxsiy menejer"],
       features_ru: ["До 10 активных объявлений", "Премиум значок", "API интеграция", "Приоритетная модерация", "Личный менеджер"],
       features_en: ["Up to 10 active listings", "Premium badge", "API integration", "Priority moderation", "Personal manager"],
     },
@@ -379,7 +458,7 @@ function TariffPlansSection() {
         } else {
           setTariffs([]);
           setUsingFallback(false);
-          setLoadError(getApiErrorMessage(err, "Tariflarni yuklab bo'lmadi."));
+          setLoadError(getApiErrorMessage(err, tt.loadError));
         }
       });
   }, []);
@@ -411,7 +490,7 @@ function TariffPlansSection() {
       cacheProfile(profileResponse.data);
       setDone({ tariff, message: res.data.detail });
     } catch (e) {
-      setError(getApiErrorMessage(e, "Tarifni faollashtirib bo'lmadi."));
+      setError(getApiErrorMessage(e, tt.activateError));
     } finally {
       setSubmitting(null);
     }
@@ -426,7 +505,7 @@ function TariffPlansSection() {
     <section className="tariff-section" id="tariffs">
       <div className="tariff-head">
         <h2>{cms.tariffs_title || "O'zingizga mos tarifni tanlang"}</h2>
-        <p>{cms.tariffs_subtitle || "Bepul boshlang va biznes o'sishi bilan tarifni o'zgartiring."}</p>
+        <p>{cms.tariffs_subtitle || "Bepul boshlang, biznesingiz o'sgani sari tarifni o'zgartiring."}</p>
       </div>
 
       {done ? (
@@ -436,10 +515,10 @@ function TariffPlansSection() {
               <polyline points="20 6 9 17 4 12"/>
             </svg>
           </div>
-          <h3>{(lang === 'ru' ? done.tariff.name_ru : lang === 'en' ? done.tariff.name_en : done.tariff.name) || done.tariff.name} tanlandi!</h3>
+          <h3>{(lang === 'ru' ? done.tariff.name_ru : lang === 'en' ? done.tariff.name_en : done.tariff.name) || done.tariff.name} {tt.chosen}</h3>
           <p>{done.message}</p>
           <button className="tariff-cta tariff-cta--accent" onClick={() => setDone(null)}>
-            Yaxshi
+            {tt.ok}
           </button>
         </div>
       ) : (
@@ -465,7 +544,7 @@ function TariffPlansSection() {
                     {!tariff.is_free && <span>{cms.tariffs_per_month || "so'm / oy"}</span>}
                   </div>
                   <div className="tariff-meta">
-                    {tariff.max_places} ta joy &bull; {tariff.is_free ? (cms.tariffs_unlimited || 'Muddatsiz') : `${tariff.duration_days} kun`}
+                    {tariff.max_places} {tt.places} &bull; {tariff.is_free ? (cms.tariffs_unlimited || 'Muddatsiz') : `${tariff.duration_days} ${tt.days}`}
                   </div>
                 </div>
 
@@ -489,11 +568,7 @@ function TariffPlansSection() {
                     onClick={() => handleSelect(tariff)}
                     disabled={submitting === tariff.id}
                   >
-                    {submitting === tariff.id
-                      ? 'Загрузка...'
-                      : tariff.is_free
-                        ? 'Bepul boshlash'
-                        : 'Tanlash'}
+                    {submitting === tariff.id ? tt.loading : tariff.is_free ? tt.start : tt.choose}
                   </button>
                 </div>
               </div>
@@ -501,7 +576,7 @@ function TariffPlansSection() {
           })}
           {!loadError && tariffs.length === 0 ? (
             <div style={{ gridColumn: "1 / -1", color: "#64748b", fontWeight: 700 }}>
-              Tariflar hozircha mavjud emas.
+              {tt.empty}
             </div>
           ) : null}
           {usingFallback ? (
@@ -513,7 +588,7 @@ function TariffPlansSection() {
       )}
 
       <p className="tariff-footnote">
-        Barcha tariflar uchun moderatsiya jarayoni bir xil &bull; Istalgan vaqtda tarif o'zgartirish mumkin
+        {tt.footnote}
       </p>
 
       {error && (

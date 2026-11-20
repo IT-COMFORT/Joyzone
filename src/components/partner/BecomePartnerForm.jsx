@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import api, { getApiErrorMessage } from "../../api/client.js";
 import { LanguageContext } from "../../context/LanguageContext.jsx";
 import { cacheProfile } from "../../utils/profileMapper.js";
@@ -12,38 +12,43 @@ import "./becomePartner.css";
 
 export const PARTNER_TEXT = {
   uz: {
-    formTitle: "Hamkorlik arizasi",
-    formHint: "2 daqiqa — keyin darhol joy qo'shishingiz mumkin.",
+    formTitle: "E'lon qo'ymoqchimisiz?",
+    formHint: "Atigi 2 daqiqa, keyin darhol e'lon qo'shishingiz mumkin.",
     company: "Kompaniya yoki brend nomi",
     companyPh: "Masalan: Nur Office",
     contact: "Ismingiz",
     contactPh: "Aloqa uchun ism",
     phone: "Telefon",
-    city: "Shahar / viloyat",
+    city: "Shahar yoki viloyat",
     cityPh: "Tanlang",
-    categories: "Qanday joylar bor?",
-    count: "Nechta joy?",
-    deal: "Nima qilasiz?",
+    categories: "Qanday joylaringiz bor?",
+    count: "Joylar soni",
+    deal: "Nima qilmoqchisiz?",
     deals: { rent: "Ijara", sale: "Sotuv", both: "Ikkalasi" },
     comment: "Izoh (ixtiyoriy)",
     commentPh: "Joy haqida qisqacha yoki savolingiz",
-    submit: "Hamkor bo'lish",
+    submit: "Arizani yuborish",
     sending: "Yuborilmoqda…",
-    terms: "Yuborish orqali hamkorlik shartlariga rozilik bildirasiz.",
+    terms: "Yuborish orqali e'lon joylashtirish shartlariga rozilik bildirasiz.",
     guestTitle: "Avval tizimga kiring",
-    guestText: "Ariza sizning profilingizga bog'lanadi — telefon raqam bilan 1 daqiqada kirasiz.",
+    guestText: "Ariza profilingizga bog'lanadi. Telefon raqamingiz orqali 1 daqiqada kirasiz.",
     guestCta: "Kirish va davom etish",
-    doneTitle: "Siz Joyzone hamkorisiz!",
-    doneText: "Endi birinchi joyingizni qo'shing — moderatsiyadan so'ng u katalogda ko'rinadi.",
-    alreadyTitle: "Siz allaqachon hamkorsiz",
+    doneTitle: "Tayyor! Endi e'lon qo'yishingiz mumkin",
+    doneText: "Endi birinchi joyingizni qo'shing. Tekshiruvdan so'ng u katalogda ko'rinadi.",
+    alreadyTitle: "Siz allaqachon e'lon qo'ya olasiz",
     alreadyText: "Yangi joy qo'shing yoki kabinetda arizalarni boshqaring.",
-    addPlace: "Joy qo'shish",
+    addPlace: "E'lon qo'shish",
     cabinet: "Kabinetga o'tish",
     loadError: "Joy turlarini yuklab bo'lmadi.",
     sendError: "Arizani yuborib bo'lmadi.",
     required: "Bu maydonni to'ldiring.",
     needCategory: "Kamida bitta joy turini tanlang.",
     needPhone: "Telefon raqamini to'liq kiriting.",
+    stepAbout: "Siz haqingizda",
+    stepPlaces: "Joylaringiz",
+    next: "Davom etish",
+    back: "Orqaga",
+    addComment: "Izoh qo'shish",
   },
   ru: {
     formTitle: "Заявка партнёра",
@@ -78,6 +83,11 @@ export const PARTNER_TEXT = {
     required: "Заполните это поле.",
     needCategory: "Выберите хотя бы один тип площади.",
     needPhone: "Введите номер телефона полностью.",
+    stepAbout: "О вас",
+    stepPlaces: "Ваши места",
+    next: "Далее",
+    back: "Назад",
+    addComment: "Добавить комментарий",
   },
   en: {
     formTitle: "Partner application",
@@ -112,6 +122,11 @@ export const PARTNER_TEXT = {
     required: "Please fill in this field.",
     needCategory: "Choose at least one space type.",
     needPhone: "Enter the full phone number.",
+    stepAbout: "About you",
+    stepPlaces: "Your places",
+    next: "Continue",
+    back: "Back",
+    addComment: "Add a comment",
   },
 };
 
@@ -164,6 +179,86 @@ function Check() {
   );
 }
 
+// Region picker styled like the rest of the form (the native list looked foreign).
+function RegionSelect({ value, onChange, placeholder, lang, invalid }) {
+  const [open, setOpen] = useState(false);
+  const [hover, setHover] = useState(-1);
+  const rootRef = useRef(null);
+  const listRef = useRef(null);
+  const langIndex = LANG_INDEX[lang] ?? 0;
+  const selectedIndex = REGIONS.findIndex((names) => names[0] === value);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    setHover(selectedIndex >= 0 ? selectedIndex : 0);
+    const onDown = (event) => {
+      if (!rootRef.current?.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [open, selectedIndex]);
+
+  useEffect(() => {
+    if (open && hover >= 0) listRef.current?.children[hover]?.scrollIntoView({ block: "nearest" });
+  }, [open, hover]);
+
+  const pick = (index) => {
+    onChange(REGIONS[index][0]);
+    setOpen(false);
+  };
+
+  const onKeyDown = (event) => {
+    if (event.key === "Escape") {
+      setOpen(false);
+      return;
+    }
+    if (!open && ["ArrowDown", "ArrowUp", "Enter", " "].includes(event.key)) {
+      event.preventDefault();
+      setOpen(true);
+      return;
+    }
+    if (!open) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setHover((index) => Math.min(REGIONS.length - 1, index + 1));
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setHover((index) => Math.max(0, index - 1));
+    } else if ((event.key === "Enter" || event.key === " ") && hover >= 0) {
+      event.preventDefault();
+      pick(hover);
+    }
+  };
+
+  return (
+    <div className={`bp-select${open ? " is-open" : ""}${invalid ? " is-invalid" : ""}`} ref={rootRef}>
+      <button type="button" className="bp-select-button" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((current) => !current)} onKeyDown={onKeyDown}>
+        <span className={selectedIndex < 0 ? "is-placeholder" : undefined}>
+          {selectedIndex >= 0 ? REGIONS[selectedIndex][langIndex] : placeholder}
+        </span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+      </button>
+      {open ? (
+        <ul className="bp-select-list" role="listbox" ref={listRef}>
+          {REGIONS.map((names, index) => (
+            <li
+              key={names[0]}
+              role="option"
+              aria-selected={index === selectedIndex}
+              className={`${index === selectedIndex ? "is-selected" : ""}${index === hover ? " is-hover" : ""}`}
+              onPointerEnter={() => setHover(index)}
+              onClick={() => pick(index)}
+            >
+              <span>{names[langIndex]}</span>
+              {index === selectedIndex ? <Check /> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 function PartnerReady({ t, title, text }) {
   return (
     <div className="bp-card bp-ready" role="status">
@@ -172,7 +267,7 @@ function PartnerReady({ t, title, text }) {
       <p>{text}</p>
       <div className="bp-ready-actions">
         <button type="button" className="bp-btn is-primary" onClick={() => navigate(ADD_PLACE_PATH)}>{t.addPlace}</button>
-        <button type="button" className="bp-btn is-ghost" onClick={() => navigate("/host-today")}>{t.cabinet}</button>
+        <button type="button" className="bp-btn is-ghost" onClick={() => navigate("/host-listings")}>{t.cabinet}</button>
       </div>
     </div>
   );
@@ -188,6 +283,9 @@ export default function BecomePartnerForm() {
   const [sendError, setSendError] = useState("");
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
+  // Two short screens: who you are, then what you list.
+  const [step, setStep] = useState(1);
+  const [showComment, setShowComment] = useState(false);
 
   useEffect(() => {
     api.get("/api/categories/", { skipAuth: true })
@@ -219,21 +317,37 @@ export default function BecomePartnerForm() {
   };
   const toggleCategory = (id) => set("categories", form.categories.includes(id) ? form.categories.filter((item) => item !== id) : [...form.categories, id]);
 
-  const validate = () => {
+  const validateAbout = () => {
     const found = {};
     ["company_name", "contact_name", "city"].forEach((key) => {
       if (!String(form[key]).trim()) found[key] = t.required;
     });
     if (form.phone_number.replace(/\D/g, "").length < 9) found.phone_number = t.needPhone;
-    if (!form.categories.length) found.categories = t.needCategory;
     return found;
+  };
+
+  const goNext = () => {
+    const found = validateAbout();
+    setErrors(found);
+    if (!Object.keys(found).length) setStep(2);
   };
 
   const submit = async (event) => {
     event.preventDefault();
-    const found = validate();
-    setErrors(found);
-    if (Object.keys(found).length) return;
+    if (step === 1) {
+      goNext();
+      return;
+    }
+    const aboutErrors = validateAbout();
+    if (Object.keys(aboutErrors).length) {
+      setErrors(aboutErrors);
+      setStep(1);
+      return;
+    }
+    if (!form.categories.length) {
+      setErrors({ categories: t.needCategory });
+      return;
+    }
     setSending(true);
     setSendError("");
     try {
@@ -243,7 +357,9 @@ export default function BecomePartnerForm() {
     } catch (error) {
       const data = error?.response?.data;
       if (data && typeof data === "object" && !data.detail) {
-        setErrors(Object.fromEntries(Object.entries(data).map(([key, value]) => [key, Array.isArray(value) ? value[0] : String(value)])));
+        const found = Object.fromEntries(Object.entries(data).map(([key, value]) => [key, Array.isArray(value) ? value[0] : String(value)]));
+        setErrors(found);
+        if (["company_name", "contact_name", "phone_number", "city"].some((key) => found[key])) setStep(1);
       } else {
         setSendError(getApiErrorMessage(error, t.sendError));
       }
@@ -257,87 +373,105 @@ export default function BecomePartnerForm() {
 
   return (
     <form className="bp-card bp-form" onSubmit={submit} noValidate>
-      <header>
-        <h3>{t.formTitle}</h3>
-        <p>{t.formHint}</p>
+      <header className="bp-form-head">
+        <div>
+          <h3>{t.formTitle}</h3>
+          <p>{t.formHint}</p>
+        </div>
+        <ol className="bp-steps" aria-label={`${step}/2`}>
+          {[t.stepAbout, t.stepPlaces].map((label, index) => (
+            <li key={label} className={step === index + 1 ? "is-active" : step > index + 1 ? "is-done" : undefined}>
+              <b>{step > index + 1 ? <Check /> : index + 1}</b>
+              <span>{label}</span>
+            </li>
+          ))}
+        </ol>
       </header>
 
-      <div className="bp-row">
-        <label className="bp-field">
-          <span>{t.company}</span>
-          <input data-testid="partner-company" value={form.company_name} maxLength={150} required placeholder={t.companyPh} onChange={(e) => set("company_name", e.target.value)} />
-          {field("company_name")}
-        </label>
-        <label className="bp-field">
-          <span>{t.contact}</span>
-          <input value={form.contact_name} maxLength={150} required placeholder={t.contactPh} onChange={(e) => set("contact_name", e.target.value)} />
-          {field("contact_name")}
-        </label>
-      </div>
-
-      <div className="bp-row">
-        <label className="bp-field">
-          <span>{t.phone}</span>
-          <input type="tel" inputMode="tel" value={form.phone_number} maxLength={20} required onChange={(e) => set("phone_number", e.target.value)} />
-          {field("phone_number")}
-        </label>
-        <label className="bp-field">
-          <span>{t.city}</span>
-          <select value={form.city} required onChange={(e) => set("city", e.target.value)}>
-            <option value="" disabled>{t.cityPh}</option>
-            {REGIONS.map((names) => <option key={names[0]} value={names[0]}>{names[LANG_INDEX[lang] ?? 0]}</option>)}
-          </select>
-          {field("city")}
-        </label>
-      </div>
-
-      <fieldset className="bp-field">
-        <legend>{t.categories}</legend>
-        {loadError ? <small className="bp-error">{loadError}</small> : null}
-        <div className="bp-chips">
-          {categories.map((category) => {
-            const active = form.categories.includes(category.id);
-            return (
-              <button key={category.id} type="button" className={`bp-chip${active ? " is-active" : ""}`} aria-pressed={active} onClick={() => toggleCategory(category.id)}>
-                <i aria-hidden="true" />
-                {category[nameKey] || category.name_uz}
-              </button>
-            );
-          })}
+      {step === 1 ? (
+        <div className="bp-pane" key="about">
+          <label className="bp-field">
+            <span>{t.company}</span>
+            <input data-testid="partner-company" value={form.company_name} maxLength={150} required placeholder={t.companyPh} onChange={(e) => set("company_name", e.target.value)} />
+            {field("company_name")}
+          </label>
+          <label className="bp-field">
+            <span>{t.contact}</span>
+            <input value={form.contact_name} maxLength={150} required placeholder={t.contactPh} onChange={(e) => set("contact_name", e.target.value)} />
+            {field("contact_name")}
+          </label>
+          <div className="bp-row">
+            <label className="bp-field">
+              <span>{t.phone}</span>
+              <input type="tel" inputMode="tel" value={form.phone_number} maxLength={20} required onChange={(e) => set("phone_number", e.target.value)} />
+              {field("phone_number")}
+            </label>
+            <div className="bp-field">
+              <span>{t.city}</span>
+              <RegionSelect value={form.city} onChange={(value) => set("city", value)} placeholder={t.cityPh} lang={lang} invalid={Boolean(errors.city)} />
+              {field("city")}
+            </div>
+          </div>
+          <button data-testid="partner-next" type="submit" className="bp-btn is-primary is-wide">{t.next}</button>
         </div>
-        {field("categories")}
-      </fieldset>
+      ) : (
+        <div className="bp-pane" key="places">
+          <fieldset className="bp-field">
+            <legend>{t.categories}</legend>
+            {loadError ? <small className="bp-error">{loadError}</small> : null}
+            <div className="bp-chips">
+              {categories.map((category) => {
+                const active = form.categories.includes(category.id);
+                return (
+                  <button key={category.id} type="button" className={`bp-chip${active ? " is-active" : ""}`} aria-pressed={active} onClick={() => toggleCategory(category.id)}>
+                    <i aria-hidden="true" />
+                    {category[nameKey] || category.name_uz}
+                  </button>
+                );
+              })}
+            </div>
+            {field("categories")}
+          </fieldset>
 
-      <div className="bp-row is-choices">
-        <fieldset className="bp-field">
-          <legend>{t.count}</legend>
-          <div className="bp-segment">
-            {PLACES_COUNTS.map((value) => (
-              <button key={value} type="button" className={form.places_count === value ? "is-active" : ""} aria-pressed={form.places_count === value} onClick={() => set("places_count", value)}>{value}</button>
-            ))}
+          <div className="bp-row is-choices">
+            <fieldset className="bp-field">
+              <legend>{t.count}</legend>
+              <div className="bp-segment">
+                {PLACES_COUNTS.map((value) => (
+                  <button key={value} type="button" className={form.places_count === value ? "is-active" : ""} aria-pressed={form.places_count === value} onClick={() => set("places_count", value)}>{value}</button>
+                ))}
+              </div>
+            </fieldset>
+            <fieldset className="bp-field">
+              <legend>{t.deal}</legend>
+              <div className="bp-segment">
+                {DEALS.map((value) => (
+                  <button key={value} type="button" className={form.deal_type === value ? "is-active" : ""} aria-pressed={form.deal_type === value} onClick={() => set("deal_type", value)}>{t.deals[value]}</button>
+                ))}
+              </div>
+            </fieldset>
           </div>
-        </fieldset>
-        <fieldset className="bp-field">
-          <legend>{t.deal}</legend>
-          <div className="bp-segment">
-            {DEALS.map((value) => (
-              <button key={value} type="button" className={form.deal_type === value ? "is-active" : ""} aria-pressed={form.deal_type === value} onClick={() => set("deal_type", value)}>{t.deals[value]}</button>
-            ))}
+
+          {showComment || form.comment ? (
+            <label className="bp-field">
+              <span>{t.comment}</span>
+              <textarea rows={3} maxLength={1000} value={form.comment} placeholder={t.commentPh} onChange={(e) => set("comment", e.target.value)} />
+            </label>
+          ) : (
+            <button type="button" className="bp-add-comment" onClick={() => setShowComment(true)}>+ {t.addComment}</button>
+          )}
+
+          {sendError ? <div className="bp-alert" role="alert">{sendError}</div> : null}
+
+          <div className="bp-actions">
+            <button type="button" className="bp-btn is-ghost" onClick={() => setStep(1)}>{t.back}</button>
+            <button data-testid="partner-submit" type="submit" className="bp-btn is-primary" disabled={sending}>
+              {sending ? t.sending : t.submit}
+            </button>
           </div>
-        </fieldset>
-      </div>
-
-      <label className="bp-field">
-        <span>{t.comment}</span>
-        <textarea rows={3} maxLength={1000} value={form.comment} placeholder={t.commentPh} onChange={(e) => set("comment", e.target.value)} />
-      </label>
-
-      {sendError ? <div className="bp-alert" role="alert">{sendError}</div> : null}
-
-      <button data-testid="partner-submit" type="submit" className="bp-btn is-primary is-wide" disabled={sending}>
-        {sending ? t.sending : t.submit}
-      </button>
-      <p className="bp-terms">{t.terms}</p>
+          <p className="bp-terms">{t.terms}</p>
+        </div>
+      )}
     </form>
   );
 }

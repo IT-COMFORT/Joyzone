@@ -1,6 +1,7 @@
 import React from "react";
-import logoImage from "../../assets/img/logoLight.png";
+import logoImage from "../../assets/img/logoOnBlue.png";
 import { navigate } from "../../utils/router.js";
+import { pickLocalized, useOnboardingText } from "./onboardingText.js";
 
 export const iconAliases = {
   OF: "building",
@@ -56,6 +57,7 @@ export const iconPaths = {
   restroom: ["M8 6a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z", "M16 6a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z", "M6 21v-6H5l1-7h4l1 7h-1v6", "M14 21v-7l-1-6h6l-1 6v7", "M12 3v18"],
   stairs: ["M4 20h4v-4h4v-4h4V8h4", "M4 20V4"],
   "check-circle": ["M22 11.08V12a10 10 0 1 1-5.93-9.14", "M22 4L12 14.01l-3-3"],
+  check: ["M5 12.5l4.5 4.5L19 7.5"],
   bell: ["M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9", "M10.3 21a1.94 1.94 0 0 0 3.4 0"],
   chat: ["M12 3.2c5 0 9 3.6 9 8s-4 8-9 8c-1.1 0-2.1-.2-3.1-.5L4.4 20.8l1.3-3.9C4 15.4 3 13.4 3 11.2c0-4.4 4-8 9-8Z", "M7.4 11.2a.6.6 0 1 0 1.2 0 .6.6 0 1 0-1.2 0", "M11.4 11.2a.6.6 0 1 0 1.2 0 .6.6 0 1 0-1.2 0", "M15.4 11.2a.6.6 0 1 0 1.2 0 .6.6 0 1 0-1.2 0"],
   trend: ["M3 17l6-6 4 4 8-8", "M14 7h7v7"],
@@ -105,9 +107,11 @@ export function Icon({ name }) {
 }
 
 export function Header({ profile }) {
+  const { t: text, lang } = useOnboardingText();
+  const t = text.header;
   return (
     <header className="partner-onboarding-header">
-      <a href="/" className="partner-onboarding-logo" aria-label="Joyzone bosh sahifa">
+      <a href="/" className="partner-onboarding-logo" aria-label={t.homeAria}>
         <img src={logoImage} alt="Joyzone" />
       </a>
       
@@ -115,27 +119,28 @@ export function Header({ profile }) {
         <div 
           onClick={() => { navigate("/host-tariffs"); }}
           className="header-tariff-badge-clickable"
-          title="Смотреть список тарифов"
+          title={t.tariffsTitle}
         >
           <span>
-            Тариф: <strong className="tariff-name">{profile.tariff_details ? (profile.tariff_details.name_ru || profile.tariff_details.name) : "Standard (Базовый)"}</strong>
+            {t.tariff} <strong className="tariff-name">{profile.tariff_details ? pickLocalized(profile.tariff_details, lang) : t.tariffFallback}</strong>
           </span>
           <span className="header-tariff-badge-divider" />
           <span>
-            Лимит мест: <strong className="tariff-limit">{profile.tariff_details ? profile.tariff_details.max_places : 1}</strong>
+            {t.limit} <strong className="tariff-limit">{profile.tariff_details ? profile.tariff_details.max_places : 1}</strong>
           </span>
         </div>
       )}
 
       <div className="partner-onboarding-actions">
-        <a href="/partner-guide">Есть вопросы?</a>
-        <a href={profile?.role === "partner" ? "/host-listings" : "/"}>{profile?.role === "partner" ? "В кабинет" : "На главную"}</a>
+        <a href="/partner-guide">{t.questions}</a>
+        <a href={profile?.role === "partner" ? "/host-listings" : "/"}>{profile?.role === "partner" ? t.cabinet : t.home}</a>
       </div>
     </header>
   );
 }
 
 export function SelectionCard({ item, active, onClick, hint }) {
+  const { lang } = useOnboardingText();
   return (
     <button
       type="button"
@@ -148,7 +153,7 @@ export function SelectionCard({ item, active, onClick, hint }) {
         <Icon name={resolveIconName(item)} />
       </span>
       <span className="pow-choice-text">
-        <strong>{item.name_ru || item.name}</strong>
+        <strong>{pickLocalized(item, lang)}</strong>
         {hint ? <small>{hint}</small> : null}
       </span>
       <i className="pow-choice-check" aria-hidden="true" />
@@ -157,13 +162,14 @@ export function SelectionCard({ item, active, onClick, hint }) {
 }
 
 export function CounterRow({ label, value, onChange }) {
+  const { t } = useOnboardingText();
   return (
     <div className="counter-row">
       <span>{label}</span>
       <div className="counter-controls">
-        <button type="button" aria-label={`Меньше: ${label}`} onClick={() => onChange(Math.max(0, value - 1))}>−</button>
+        <button type="button" aria-label={t.header.less(label)} onClick={() => onChange(Math.max(0, value - 1))}>−</button>
         <strong>{value}</strong>
-        <button type="button" aria-label={`Больше: ${label}`} onClick={() => onChange(value + 1)}>+</button>
+        <button type="button" aria-label={t.header.more(label)} onClick={() => onChange(value + 1)}>+</button>
       </div>
     </div>
   );

@@ -126,14 +126,14 @@ function PartnerRole() {
           </span>
           <span className="hs-role hs-role-on" style={at(1.3)}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 21V8l8-5 8 5v13" /><path d="M9 21v-6h6v6" /></svg>
-            Hamkor
+            Joy egasi
           </span>
         </div>
         <label>Kompaniya nomi</label>
         <div className="hs-field"><span className="hs-type" style={{ ...at(1.9), "--len": "1.2s" }}>Kamalak Business</span></div>
         <span className="hs-btn hs-press" style={at(3.6)}>Kabinetga o'tish</span>
       </div>
-      <div className="hs-toast hs-pop hs-role-toast" style={at(4.1)}><Check />Hamkor kabineti ochildi</div>
+      <div className="hs-toast hs-pop hs-role-toast" style={at(4.1)}><Check />E'lonlar kabineti ochildi</div>
       <Cursor />
     </div>
   );
@@ -227,14 +227,14 @@ function buildAudiences(cms, role) {
       ],
     },
     partner: {
-      tab: cms.how_tab_partner || "Hamkorlar uchun",
-      title: cms.how_partner_title || "Joyingizni 3 qadamda ijaraga bering",
-      text: cms.how_partner_text || "Joy qo'shing, moderatsiyadan o'ting va so'rovlarni bitta kabinetda qabul qiling.",
-      cta: { label: cms.how_partner_cta || "Joy qo'shish", href: partnerEntryHref(role) },
-      guide: { label: cms.how_partner_guide || "Hamkorlar qo'llanmasi", href: "/partner-guide" },
+      tab: cms.how_tab_partner || "Joy egalari uchun",
+      title: cms.how_partner_title || "E'loningizni 3 qadamda joylashtiring",
+      text: cms.how_partner_text || "E'lon qo'shing, moderatsiyadan o'ting va so'rovlarni bitta kabinetda qabul qiling.",
+      cta: { label: cms.how_partner_cta || "E'lon qo'shish", href: partnerEntryHref(role) },
+      guide: { label: cms.how_partner_guide || "E'lon joylash qo'llanmasi", href: "/partner-guide" },
       video: cms.how_video_partner || "",
       steps: [
-        { title: cms.how_partner_step1_title || "Hamkor bo'ling", text: cms.how_partner_step1 || "Telefon raqamingiz bilan kiring, hamkor rolini tanlang va kompaniya nomini yozing." },
+        { title: cms.how_partner_step1_title || "Ariza qoldiring", text: cms.how_partner_step1 || "Telefon raqamingiz bilan kiring va qisqa arizani to'ldiring: kompaniya nomi va joylaringiz turi." },
         { title: cms.how_partner_step2_title || "Joyingizni qo'shing", text: cms.how_partner_step2 || "Format, manzil, kamida 4 ta rasm, narx va ish vaqtini kiriting — e'lon moderatsiyaga yuboriladi." },
         { title: cms.how_partner_step3_title || "So'rovlarni boshqaring", text: cms.how_partner_step3 || "Bron so'rovlarini tasdiqlang, grafikni yuriting va mijozlar bilan chatda gaplashing." },
       ],
@@ -387,9 +387,7 @@ export function HowItWorksSection({ cms = {} }) {
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z" /></svg>
                   {cms.how_video_label || "Videoni ko'rish"}
                 </button>
-              ) : (
-                <span className="hiw-demo-label">{cms.how_demo_label || "Interaktiv ko'rsatma"}</span>
-              )}
+              ) : null}
             </div>
           </div>
 

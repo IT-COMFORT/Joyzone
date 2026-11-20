@@ -133,9 +133,14 @@ export function normalizeChatMessage(message = {}) {
   };
 }
 
+// Stand-in preview of a thread with no messages; pages show their own translation.
+export const CHAT_EMPTY_PREVIEW = "Диалог начат...";
+// Stand-in name of a thread's owner when the server sends none.
+export const CHAT_NO_HOST_NAME = "Ega / Host";
+
 export function normalizeChat(chat = {}) {
   const spaceTitle = chat.spaceTitle || chat.space_title || chat.space || "Joyzone Space";
-  const hostName = chat.host_user_name || chat.hostName || chat.host_name || "Ega / Host";
+  const hostName = chat.host_user_name || chat.hostName || chat.host_name || CHAT_NO_HOST_NAME;
   return {
     ...chat,
     id: chat.id || chat.thread_id,
@@ -149,7 +154,7 @@ export function normalizeChat(chat = {}) {
     space: spaceTitle,
     spaceTitle,
     space_title: spaceTitle,
-    preview: chat.preview || chat.last || "Диалог начат...",
+    preview: chat.preview || chat.last || CHAT_EMPTY_PREVIEW,
     unread: Boolean(chat.unread),
     // "guest" or "host": which side of the thread the current user is on.
     viewerRole: chat.viewer_role || chat.viewerRole || "guest",

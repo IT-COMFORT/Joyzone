@@ -1,19 +1,29 @@
-// Home hero: one empty, well-lit interior per category (no people).
+// Home hero: one wide shot of a whole space per category.
 export const slides = [
   {
     eyebrow: "Ofislar",
-    title: "Jamoangiz uchun tayyor zamonaviy ofislar",
-    image: "https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1600&q=85"
+    title: "Keng va yorug' zamonaviy ofislar",
+    image: "https://images.unsplash.com/photo-1631193816258-28b44b21e78b?auto=format&fit=crop&w=1600&q=85"
   },
   {
     eyebrow: "Kovorking",
-    title: "Yorug' va qulay kovorking zonalari",
-    image: "https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=1600&q=85"
+    title: "Butun jamoa uchun keng ish maydoni",
+    image: "https://images.unsplash.com/photo-1577412647305-991150c7d163?auto=format&fit=crop&w=1600&q=85"
   },
   {
     eyebrow: "Konferens-zallar",
     title: "Uchrashuv va taqdimotlar uchun zallar",
-    image: "https://images.unsplash.com/photo-1431540015161-0bf868a2d407?auto=format&fit=crop&w=1600&q=85"
+    image: "https://images.unsplash.com/photo-1462826303086-329426d1aef5?auto=format&fit=crop&w=1600&q=85"
+  },
+  {
+    eyebrow: "Biznes markazlar",
+    title: "Shisha devorli alohida ofis bloklari",
+    image: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=85"
+  },
+  {
+    eyebrow: "Loft ofislar",
+    title: "Baland shiftli loft uslubidagi ofislar",
+    image: "https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1600&q=85"
   }
 ];
 

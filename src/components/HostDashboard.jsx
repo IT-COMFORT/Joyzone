@@ -1,5 +1,4 @@
-import { pageMeta, navIndex, FALLBACK_TODAY_BOOKINGS, FALLBACK_UPCOMING_BOOKINGS, buildHostListingView, buildHostBookingView, FALLBACK_HOST_LISTINGS, DashboardHero, DashboardToast } from "./hostDashboard/shared.jsx";
-import { TodayPage } from "./hostDashboard/TodayPage.jsx";
+import { pageMeta, buildHostListingView, buildHostBookingView, FALLBACK_HOST_LISTINGS, DashboardToast } from "./hostDashboard/shared.jsx";
 import { CalendarPage } from "./hostDashboard/CalendarPage.jsx";
 import { ListingsPage } from "./hostDashboard/ListingsPage.jsx";
 import { MessagesPage } from "./hostDashboard/MessagesPage.jsx";
@@ -7,16 +6,19 @@ import { HostTariffsPage } from "./hostDashboard/HostTariffsPage.jsx";
 import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import api, { getAccessToken, getApiErrorMessage } from "../api/client.js";
+import { useText } from "../context/LanguageContext.jsx";
 
-import { Header as JoyNavbar } from "./HomeHero.jsx";
-import { buildPartnerStats, selectTodayBookings, selectUpcomingBookings } from "../utils/partnerDashboard.js";
 import { setStorageItem, STORAGE_KEYS } from "../utils/storageKeys.js";
 import { cacheProfile } from "../utils/profileMapper.js";
 import "./HostDashboard.css";
-import { navigate, partnerEditPath } from "../utils/router.js";
+import { navigate, partnerEditPath, useQueryParam } from "../utils/router.js";
 
 function HostDashboard({ page = "today", userState, setUserState }) {
-  const normalizedPage = pageMeta[page] ? page : "today";
+  const { t, lang } = useText();
+  // "Today" now lives on top of "My places", so its old address opens that page.
+  const normalizedPage = page === "today" || !pageMeta[page] ? "listings" : page;
+  // The schedule opens for one place: /host-calendar?place=<id>.
+  const placeId = useQueryParam("place") || "";
   const [listings, setListings] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [listingsApiFailed, setListingsApiFailed] = useState(false);
@@ -47,10 +49,10 @@ function HostDashboard({ page = "today", userState, setUserState }) {
       setApiError("profile", "");
       return normalizedProfile;
     } catch (e) {
-      setApiError("profile", getApiErrorMessage(e, "Не удалось загрузить профиль партнёра."));
+      setApiError("profile", getApiErrorMessage(e, t("host_err_profile"), lang));
       return null;
     }
-  }, [setApiError]);
+  }, [setApiError, t, lang]);
 
   const fetchListings = useCallback(async () => {
     const token = getAccessToken();
@@ -65,12 +67,12 @@ function HostDashboard({ page = "today", userState, setUserState }) {
       setListingsApiFailed(false);
       setApiError("listings", "");
     } catch (e) {
-      setApiError("listings", getApiErrorMessage(e, "Не удалось загрузить ваши объекты."));
+      setApiError("listings", getApiErrorMessage(e, t("host_err_listings"), lang));
       setListings([]);
       setListingsApiFailed(true);
     }
     setLoading(false);
-  }, [setApiError]);
+  }, [setApiError, t, lang]);
 
   const fetchBookings = useCallback(async () => {
       const token = getAccessToken();
@@ -85,11 +87,11 @@ function HostDashboard({ page = "today", userState, setUserState }) {
       setBookingsApiFailed(false);
       setApiError("bookings", "");
     } catch (e) {
-      setApiError("bookings", getApiErrorMessage(e, "Не удалось загрузить бронирования партнёра."));
+      setApiError("bookings", getApiErrorMessage(e, t("host_err_bookings"), lang));
       setBookings([]);
       setBookingsApiFailed(true);
     }
-  }, [setApiError]);
+  }, [setApiError, t, lang]);
 
   useEffect(() => {
     fetchProfile();
@@ -111,8 +113,8 @@ function HostDashboard({ page = "today", userState, setUserState }) {
   ), [listings]);
 
   const normalizedBookings = useMemo(
-    () => bookings.map((booking) => buildHostBookingView(booking, listingsById)),
-    [bookings, listingsById]
+    () => bookings.map((booking) => buildHostBookingView(booking, listingsById, t, lang)),
+    [bookings, listingsById, t, lang]
   );
 
   const usingListingsFallback = import.meta.env.DEV && listingsApiFailed;
@@ -126,29 +128,6 @@ function HostDashboard({ page = "today", userState, setUserState }) {
     () => Object.values(apiErrors).filter(Boolean).join(" "),
     [apiErrors],
   );
-
-  const dashboardStats = useMemo(
-    () => buildPartnerStats(listings, normalizedBookings),
-    [listings, normalizedBookings]
-  );
-
-  const todayItems = useMemo(() => {
-    if (import.meta.env.DEV && usingBookingsFallback) return FALLBACK_TODAY_BOOKINGS;
-    return selectTodayBookings(normalizedBookings);
-  }, [normalizedBookings, usingBookingsFallback]);
-
-  const upcomingItems = useMemo(() => {
-    const source = import.meta.env.DEV && usingBookingsFallback
-      ? FALLBACK_UPCOMING_BOOKINGS
-      : selectUpcomingBookings(normalizedBookings)
-      .map((booking) => ({
-        id: booking.id,
-        date: booking.date,
-        title: booking.space,
-        type: booking.durationLabel,
-      }));
-    return source;
-  }, [normalizedBookings, usingBookingsFallback]);
 
   const handleEdit = (item) => {
     setStorageItem(STORAGE_KEYS.workflow.editPlaceReturnHash, window.location.pathname);
@@ -165,37 +144,27 @@ function HostDashboard({ page = "today", userState, setUserState }) {
       await api.delete(`/api/places/${id}/`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      showToast("Пространство успешно удалено!", "success");
+      showToast(t("list_deleted"), "success");
       setDeleteConfirmSpace(null);
       fetchListings();
       fetchBookings();
     } catch (e) {
-      showToast(getApiErrorMessage(e, "Ошибка при удалении объекта"), "error");
+      showToast(getApiErrorMessage(e, t("list_delete_err"), lang), "error");
       setDeleteConfirmSpace(null);
     }
   };
 
   return (
-    <main className="host-dashboard-shell">
-      <JoyNavbar userState={userState} setUserState={setUserState} activeIndex={navIndex[normalizedPage]} variant="dashboard" />
-      <section className={`host-dashboard-container ${normalizedPage === "messages" ? "is-messages-page" : ""}`}>
-        <DashboardHero page={normalizedPage} profile={profile} />
+    <div className={`host-dash-page ${normalizedPage === "messages" ? "is-messages-page" : ""}`}>
         {dashboardError ? (
           <div style={{ marginBottom: 16, padding: "10px 12px", borderRadius: 10, background: "#fef2f2", color: "#991b1b", fontSize: 13 }}>
             {dashboardError}
             {usingFallbackData ? " · DEV fallback data is shown." : ""}
           </div>
         ) : null}
-        {normalizedPage === "today" ? (
-          <TodayPage
-            todayBookings={todayItems}
-            upcomingBookings={upcomingItems}
-            stats={dashboardStats}
-            usingFallback={usingBookingsFallback}
-          />
-        ) : null}
         {normalizedPage === "calendar" ? (
           <CalendarPage
+            placeId={placeId}
             listings={listings}
             bookings={normalizedBookings}
             usingFallback={usingListingsFallback}
@@ -208,26 +177,25 @@ function HostDashboard({ page = "today", userState, setUserState }) {
           loading ? (
             <div style={{ textAlign: "center", padding: "80px 20px" }}>
               <div className="joy-spinner" style={{ display: "inline-block", width: 40, height: 40, border: "3px solid rgba(228, 102, 48, 0.2)", borderTopColor: "var(--orange)", borderRadius: "50%", animation: "spin 1s linear infinite" }}></div>
-              <p style={{ marginTop: 16, color: "#64748b" }}>Загрузка ваших объявлений...</p>
+              <p style={{ marginTop: 16, color: "#64748b" }}>{t("list_loading")}</p>
             </div>
           ) : (
-            <ListingsPage listings={displayListings} onEdit={handleEdit} onDelete={askDelete} />
+            <ListingsPage listings={displayListings} bookings={normalizedBookings} onEdit={handleEdit} onDelete={askDelete} />
           )
         ) : null}
         {normalizedPage === "messages" ? <MessagesPage listings={displayListings} partnerId={profile?.id} /> : null}
-        {normalizedPage === "tariffs" ? <HostTariffsPage showToast={showToast} profile={profile} fetchProfile={fetchProfile} /> : null}
-      </section>
+        {normalizedPage === "tariffs" ? <HostTariffsPage showToast={showToast} profile={profile} fetchProfile={fetchProfile} listingsCount={listings.length} /> : null}
 
       {/* Beautiful Custom Alert Popup portal */}
       {deleteConfirmSpace && createPortal(
         <div className="host-custom-alert-overlay" onClick={() => setDeleteConfirmSpace(null)}>
           <div className="host-custom-alert-box animate-pop" onClick={e => e.stopPropagation()}>
             <div className="host-custom-alert-icon">⚠️</div>
-            <h3>Удалить пространство?</h3>
-            <p>Вы действительно хотите удалить <strong>«{deleteConfirmSpace.title}»</strong>? Это действие нельзя будет отменить.</p>
+            <h3>{t("list_delete_title")}</h3>
+            <p>{t("list_delete_text", { name: deleteConfirmSpace.title })}</p>
             <div className="host-custom-alert-buttons">
-              <button className="host-alert-btn cancel" onClick={() => setDeleteConfirmSpace(null)}>Отмена</button>
-              <button className="host-alert-btn confirm" onClick={() => performDelete(deleteConfirmSpace.id)}>Да, удалить</button>
+              <button className="host-alert-btn cancel" onClick={() => setDeleteConfirmSpace(null)}>{t("cab_cancel")}</button>
+              <button className="host-alert-btn confirm" onClick={() => performDelete(deleteConfirmSpace.id)}>{t("list_delete_confirm")}</button>
             </div>
           </div>
         </div>,
@@ -243,7 +211,7 @@ function HostDashboard({ page = "today", userState, setUserState }) {
         />,
         document.body
       )}
-    </main>
+    </div>
   );
 }
 

@@ -1,29 +1,34 @@
-import { initialProfile, CANCELLABLE_BOOKING_STATUSES, ACTIVE_BOOKING_STATUSES, PAID_PAYMENT_STATUSES, ProfileIcon, buildProfileBookingView, bookingStatusLabel, paymentStatusLabel, normalizeBookingResponse, normalizePaymentResponse, getCompletion, formatBookingPeriod, formatShortDate } from "./userProfile/helpers.jsx";
+import { initialProfile, CANCELLABLE_BOOKING_STATUSES, ACTIVE_BOOKING_STATUSES, PAID_PAYMENT_STATUSES, ProfileIcon, buildProfileBookingView, bookingStatusLabel, paymentStatusLabel, normalizeBookingResponse, normalizePaymentResponse, getCompletion, formatBookingPeriod } from "./userProfile/helpers.jsx";
 import { BookingHistory, PaymentHistory, ProfileDetailsCard, ProfileStats, isActiveBooking } from "./userProfile/HistoryTabs.jsx";
 import { ProfileQuestionnaireEdit } from "./userProfile/ProfileQuestionnaireEdit.jsx";
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import api, { getAccessToken, getApiErrorMessage } from "../api/client.js";
+import { useText } from "../context/LanguageContext.jsx";
+import { formatMonthYear } from "../utils/localeDate.js";
 
-import { Header as JoyNavbar } from "./HomeHero.jsx";
 import { PropertyCard } from "./ListingsSection.jsx";
 import { HostListingDetailModal } from "./HostListingDetailModal.jsx";
 import { normalizePlace } from "../utils/placeMapper.js";
 import { fetchFavoritesFromBackend, getLocalFavorites } from "../utils/favoritesManager.js";
 import { normalizeBooking } from "../utils/bookingMapper.js";
-import { cacheProfile, profileToUserState, questionnaireFromProfile } from "../utils/profileMapper.js";
-import { fileToAvatarDataUrl } from "../utils/avatarImage.js";
+import { questionnaireFromProfile, splitFullName } from "../utils/profileMapper.js";
 import { getStorageItem, readJsonStorage, STORAGE_KEYS } from "../utils/storageKeys.js";
+import { navigate, useQueryParam } from "../utils/router.js";
 import "./UserProfile.css";
+import "./userProfile/profileHero.css";
 import "./HostDashboard.css";
 
 function UserProfile({ userState, setUserState }) {
-  const [activeTab, setActiveTab] = useState("about");
+  const { t, lang, locale } = useText();
+  // The tab lives in the URL (/profile?tab=history), so the shared sidebar can link to it.
+  const tabParam = useQueryParam("tab");
+  const activeTab = ["history", "payments", "likes"].includes(tabParam) ? tabParam : "about";
+  const setActiveTab = (id) => navigate(id === "about" ? "/profile" : `/profile?tab=${id}`);
   const [selectedListing, setSelectedListing] = useState(null);
   const [likedSpaces, setLikedSpaces] = useState(() => import.meta.env.DEV ? getLocalFavorites() : []);
   const [favoritesLoading, setFavoritesLoading] = useState(true);
   const [favoritesError, setFavoritesError] = useState("");
   const [favoritesUsingDevFallback, setFavoritesUsingDevFallback] = useState(false);
-  const avatarInputRef = useRef(null);
 
   useEffect(() => {
     let active = true;
@@ -34,7 +39,7 @@ function UserProfile({ userState, setUserState }) {
     if (!userState?.isAuthed || !getAccessToken()) {
       setLikedSpaces([]);
       setFavoritesLoading(false);
-      setFavoritesError("Saqlangan joylarni ko'rish uchun tizimga kiring.");
+      setFavoritesError("fav_sign_in");
       return undefined;
     }
 
@@ -47,7 +52,7 @@ function UserProfile({ userState, setUserState }) {
       .catch((error) => {
         if (!active) return;
         setLikedSpaces([]);
-        setFavoritesError(getApiErrorMessage(error, "Не удалось загрузить избранное"));
+        setFavoritesError(getApiErrorMessage(error, t("fav_err_load"), lang));
       })
       .finally(() => {
         if (active) setFavoritesLoading(false);
@@ -69,7 +74,7 @@ function UserProfile({ userState, setUserState }) {
   }, [userState?.isAuthed]);
 
   const profileData = useMemo(() => {
-    const activeName = userState?.name || getStorageItem(STORAGE_KEYS.profile.name) || "Foydalanuvchi";
+    const activeName = userState?.name || getStorageItem(STORAGE_KEYS.profile.name) || t("dash_user");
     const activeEmail = userState?.email || getStorageItem(STORAGE_KEYS.profile.email, "");
     const activePhone = userState?.phone || getStorageItem(STORAGE_KEYS.profile.phone, "");
     const legacyLocal = readJsonStorage(STORAGE_KEYS.profile.localQuestionnaire, {});
@@ -77,69 +82,18 @@ function UserProfile({ userState, setUserState }) {
       ...initialProfile,
       ...questionnaireFromProfile({ profile_details: userState?.profileDetails }, legacyLocal),
       name: activeName,
+      // Completion must count the same fields as the edit page, so the two percentages match.
+      firstName: userState?.firstName ?? splitFullName(userState?.name).first_name,
+      lastName: userState?.lastName ?? splitFullName(userState?.name).last_name,
       email: activeEmail,
       phone: activePhone
     };
-  }, [userState]);
+  }, [userState, t]);
   const completion = useMemo(() => getCompletion(profileData), [profileData]);
-  const missingFields = useMemo(() => {
-    const labels = { firstName: "Ism", lastName: "Familiya", role: "Qisqa tavsif", city: "Shahar", birthYear: "Tug'ilgan yil", languages: "Tillar", email: "Email", phone: "Telefon", work: "Ish", company: "Kompaniya", interests: "Qiziqishlar", about: "O'zim haqimda" };
-    return Object.keys(labels).filter((key) => !String(profileData[key] || "").trim()).map((key) => labels[key]);
-  }, [profileData]);
-  const roleLabel = { admin: "Administrator", moderator: "Moderator", partner: "Hamkor", client: "Mijoz" }[userState?.role] || "Joyzone foydalanuvchisi";
-  const memberSince = userState?.dateJoined ? formatShortDate(userState.dateJoined, true).replace(/^\d+ /, "") : "";
+  const roleLabel = ["admin", "moderator", "partner", "client"].includes(userState?.role) ? t(`prof_role_${userState.role}`) : t("prof_role_default");
+  const joinedAt = userState?.dateJoined ? new Date(userState.dateJoined) : null;
+  const memberSince = joinedAt && !Number.isNaN(joinedAt.getTime()) ? formatMonthYear(joinedAt, lang).replace(/\s*г\.$/, "") : "";
   const initials = (profileData.name || "").split(/\s+/).map((part) => part.replace(/[^\p{L}]/gu, "")[0]).filter(Boolean).join("").slice(0, 2).toUpperCase() || "JZ";
-  const [profileError, setProfileError] = useState("");
-  const [avatarSaving, setAvatarSaving] = useState(false);
-
-  // Handle avatar upload and change
-  const handleAvatarSelect = () => {
-    if (!avatarSaving && avatarInputRef.current) {
-      avatarInputRef.current.click();
-    }
-  };
-
-  const handleAvatarChange = async (e) => {
-    const file = e.target.files && e.target.files[0];
-    e.target.value = "";
-    if (!file) return;
-    if (!getAccessToken()) {
-      setProfileError("Profil rasmini saqlash uchun tizimga kiring.");
-      return;
-    }
-    setAvatarSaving(true);
-    try {
-      const avatar = await fileToAvatarDataUrl(file);
-      const response = await api.patch("/api/auth/profile/", { avatar });
-      const profile = cacheProfile(response.data);
-      setUserState?.(profileToUserState(profile, userState));
-      setProfileError("");
-    } catch (err) {
-      setProfileError(err?.response ? getApiErrorMessage(err, "Не удалось обновить аватар") : err.message);
-    } finally {
-      setAvatarSaving(false);
-    }
-  };
-
-  const handleAvatarRemove = async () => {
-    const token = getAccessToken();
-    if (!token) {
-      setProfileError("Profil rasmini o'chirish uchun tizimga kiring.");
-      return;
-    }
-    setAvatarSaving(true);
-    try {
-      const response = await api.patch("/api/auth/profile/", { avatar: null });
-      const profile = cacheProfile(response.data);
-      setUserState?.(profileToUserState(profile, userState));
-      setProfileError("");
-    } catch (err) {
-      setProfileError(getApiErrorMessage(err, "Не удалось удалить аватар"));
-    } finally {
-      setAvatarSaving(false);
-    }
-  };
-
   // Property states
   const [allBookings, setAllBookings] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -161,8 +115,8 @@ function UserProfile({ userState, setUserState }) {
       setBookingsLoading(false);
       setBookingsLoaded(false);
       setPaymentsLoading(false);
-      setBookingsError("Bronlar tarixini ko'rish uchun tizimga kiring.");
-      setPaymentsError("To'lovlar tarixini ko'rish uchun tizimga kiring.");
+      setBookingsError(t("hist_sign_in"));
+      setPaymentsError(t("payh_sign_in"));
       return;
     }
 
@@ -180,7 +134,7 @@ function UserProfile({ userState, setUserState }) {
       setBookingsLoaded(true);
     } else {
       setAllBookings([]);
-      setBookingsError(getApiErrorMessage(bookingsResult.reason, "Не удалось загрузить историю бронирований"));
+      setBookingsError(getApiErrorMessage(bookingsResult.reason, t("hist_err_load"), lang));
     }
 
     if (paymentsResult.status === "fulfilled") {
@@ -188,7 +142,7 @@ function UserProfile({ userState, setUserState }) {
       setPaymentsError("");
     } else {
       setPayments([]);
-      setPaymentsError(getApiErrorMessage(paymentsResult.reason, "Не удалось загрузить историю платежей"));
+      setPaymentsError(getApiErrorMessage(paymentsResult.reason, t("payh_err_load"), lang));
     }
     setBookingsLoading(false);
     setPaymentsLoading(false);
@@ -234,7 +188,7 @@ function UserProfile({ userState, setUserState }) {
       const response = await api.post(`/api/bookings/${booking.id}/cancel/`);
       const cancelledBooking = normalizeBooking(response.data);
       if (cancelledBooking.status !== "cancelled") {
-        throw new Error("Backend bronni bekor qilingan deb tasdiqlamadi.");
+        throw new Error(t("hist_cancel_err"));
       }
       cancellationConfirmed = true;
       setAllBookings((current) => current.map((item) => (
@@ -248,14 +202,9 @@ function UserProfile({ userState, setUserState }) {
       });
       setAllBookings(normalizeBookingResponse(refreshedBookingsResponse.data));
       setBookingsLoaded(true);
-      setBookingsSuccess(`${cancelledBooking.place_title} broni muvaffaqiyatli bekor qilindi.`);
+      setBookingsSuccess(t("hist_cancel_success", { place: cancelledBooking.place_title }));
     } catch (err) {
-      const message = getApiErrorMessage(
-        err,
-        cancellationConfirmed
-          ? "Bron bekor qilindi, ammo tarixni qayta yuklab bo'lmadi."
-          : "Bronni bekor qilib bo'lmadi"
-      );
+      const message = getApiErrorMessage(err, t(cancellationConfirmed ? "hist_cancel_reload_err" : "hist_cancel_err"), lang);
       setBookingActionError(message);
       if (!cancellationConfirmed) setCancelError(message);
     } finally {
@@ -274,7 +223,7 @@ function UserProfile({ userState, setUserState }) {
     .sort((left, right) => new Date(left.start_time).getTime() - new Date(right.start_time).getTime())[0] || null;
 
   const totalVal = activeBookingObj?.amount || 0;
-  const formattedTotal = `${new Intl.NumberFormat("uz-UZ").format(totalVal)} ${activeBookingObj?.currency || "UZS"}`;
+  const formattedTotal = `${new Intl.NumberFormat(locale).format(totalVal)} ${activeBookingObj?.currency || "UZS"}`;
   const activeBookingCacheKey = activeBookingObj
     ? `${activeBookingObj.id}:${activeBookingObj.status}:${activeBookingObj.payment_status}:${activeBookingObj.updated_at}`
     : "none";
@@ -300,250 +249,43 @@ function UserProfile({ userState, setUserState }) {
     });
   }, [bookingsLoaded, activeBookingCacheKey]);
 
-  const tabs = [
-    { 
-      id: "about", 
-      label: "Profil", 
-      count: `${completion}%`, 
-      icon: "user",
-      badge: completion < 100 ? "To'ldirilmagan" : null
-    },
-    { id: "history", label: "Tarix", count: displayedBookings.length, icon: "calendar" },
-    { id: "payments", label: "To'lovlar", count: payments.length, icon: "payment" },
-    { id: "likes", label: "Saqlangan", count: likedSpaces.length, icon: "heart" }
-  ];
-
   return (
-    <main className="user-profile-shell">
-      <JoyNavbar userState={userState} setUserState={setUserState} activeIndex={-1} variant="dashboard" />
-
-      {profileError ? (
-        <div style={{ maxWidth: 1180, margin: "18px auto 0", padding: "12px 16px", borderRadius: 14, background: "#fef2f2", color: "#991b1b", fontWeight: 700 }}>
-          {profileError}
-        </div>
-      ) : null}
-
-      <section className="profile-unified-panel">
-        <section className="profile-content-panel">
-          <aside className="profile-sidebar" aria-label="Profil bo'limlari">
-            <span>Profilim</span>
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                className={activeTab === tab.id ? "is-active" : ""}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                <span className="profile-tab-label">
-                  <ProfileIcon type={tab.icon} />
-                  <b>{tab.label}</b>
-                  {tab.badge && (
-                    <span className="profile-tab-badge" style={{
-                      background: "rgba(239, 68, 68, 0.15)",
-                      color: "#ef4444",
-                      fontSize: "8.5px",
-                      fontWeight: "800",
-                      padding: "2px 6px",
-                      borderRadius: "6px",
-                      marginLeft: "6px",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.02em",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      whiteSpace: "nowrap",
-                      flexShrink: 0
-                    }}>
-                      {tab.badge}
-                    </span>
-                  )}
-                </span>
-                <small>{tab.count}</small>
-              </button>
-            ))}
-          </aside>
+    <>
 
           <div className="profile-tab-content">
             {activeTab === "about" ? (
               <div className="profile-tab-panel" key="about">
-                {/* Active booking is derived from the latest backend bookings response. */}
-                {activeBookingObj && (
-                  <div className="profile-active-alert" style={{
-                    background: "rgba(249, 115, 22, 0.08)",
-                    border: "1px solid rgba(249, 115, 22, 0.15)",
-                    borderRadius: "18px",
-                    padding: "16px 20px",
-                    color: "#ea580c",
-                    marginBottom: "24px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: "16px"
-                  }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                      <span className="profile-alert-pulse" style={{
-                        width: "8px",
-                        height: "8px",
-                        borderRadius: "50%",
-                        background: "#ea580c",
-                        display: "inline-block"
-                      }} />
-                      <div>
-                        <strong style={{ display: "block", fontSize: "14px", fontWeight: "700" }}>
-                          {bookingStatusLabel(activeBookingObj.status)}
-                        </strong>
-                        <span style={{ fontSize: "12px", opacity: 0.85 }}>
-                          {activeBookingObj.place_title} uchun faol bron mavjud.
-                        </span>
-                      </div>
-                    </div>
-                    <button onClick={() => setActiveTab("history")} style={{
-                      background: "#ea580c",
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: "8px",
-                      padding: "6px 12px",
-                      fontSize: "12px",
-                      fontWeight: "600",
-                      cursor: "pointer",
-                      transition: "all 0.2s"
-                    }}>
-                      Tafsilotlar
-                    </button>
+                <section className="pf-hero">
+                  <span
+                    className="pf-hero-avatar"
+                    style={userState?.avatar ? { backgroundImage: `url(${userState.avatar})` } : undefined}
+                    aria-hidden="true"
+                  >
+                    {userState?.avatar ? null : initials}
+                  </span>
+                  <div className="pf-hero-text">
+                    <span>{roleLabel}{memberSince ? ` · ${t("prof_member_since", { date: memberSince })}` : ""}</span>
+                    <h1>{profileData.name}</h1>
+                    {profileData.role ? <p>{profileData.role}</p> : null}
                   </div>
-                )}
+                  <a className="pf-hero-edit" href="/profile-edit">
+                    <ProfileIcon type="edit" />
+                    {t("prof_edit_form")}
+                  </a>
 
-                <section className="profile-hero-panel profile-edit-hero">
-                  <div className="profile-main-card">
-                    {/* Avatar with Progress Circle wrapper */}
-                    <div className="profile-avatar-wrapper" onClick={handleAvatarSelect} style={{ cursor: "pointer" }} title="Rasm almashtirish uchun bosing">
-                      <input 
-                        type="file" 
-                        ref={avatarInputRef} 
-                        accept="image/*" 
-                        onChange={handleAvatarChange} 
-                        style={{ display: "none" }} 
-                      />
-                      <svg width="80" height="80" viewBox="0 0 80 80" style={{ transform: "rotate(-90deg)", position: "absolute", top: 0, left: 0 }}>
-                        <circle cx="40" cy="40" r="36" fill="transparent" stroke="#e2e8f0" strokeWidth="3.5" />
-                        <circle cx="40" cy="40" r="36" fill="transparent" stroke="#ea580c" strokeWidth="4" 
-                          strokeDasharray={2 * Math.PI * 36}
-                          strokeDashoffset={2 * Math.PI * 36 * (1 - completion / 100)}
-                          style={{ transition: "stroke-dashoffset 0.5s ease" }}
-                        />
-                      </svg>
-                      
-                      <div className="profile-avatar" style={{
-                        width: "66px",
-                        height: "66px",
-                        borderRadius: "50%",
-                        background: userState?.avatar ? `url(${userState.avatar}) center/cover no-repeat` : "linear-gradient(135deg, #12283f, #294a6d)",
-                        color: "#fff",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "18px",
-                        fontWeight: "750",
-                        position: "absolute",
-                        top: "7px",
-                        left: "7px",
-                        boxShadow: "none",
-                        overflow: "hidden"
-                      }}>
-                        {!userState?.avatar && (
-                          initials
-                        )}
+                  {completion < 100 ? (
+                    <a className="pf-hero-progress" href="/profile-edit">
+                      <div className="pf-hero-progress-text">
+                        <strong>{t("prof_progress", { percent: completion })}</strong>
+                        <span>{t("prof_progress_hint")}</span>
                       </div>
-
-                      <div className="profile-avatar-tooltip">
-                        {userState?.avatar ? "Almashtirish" : "Rasm yuklash"}
-                      </div>
-                    </div>
-
-                    <div className="profile-heading">
-                      <span>{roleLabel}{memberSince ? ` · A'zo: ${memberSince}` : ""}</span>
-                      <h1>{profileData.name}</h1>
-                      <p>{profileData.role}</p>
-
-                      {/* Interactive Avatar Action Buttons */}
-                      <div style={{ display: "flex", gap: "8px", marginTop: "10px", flexWrap: "wrap" }}>
-                        <button 
-                          type="button" 
-                          onClick={handleAvatarSelect}
-                          style={{
-                            background: "rgba(234, 88, 12, 0.12)",
-                            color: "#ea580c",
-                            border: "none",
-                            borderRadius: "8px",
-                            padding: "6px 12px",
-                            fontSize: "12px",
-                            fontWeight: "700",
-                            cursor: "pointer",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "6px",
-                            transition: "all 0.2s"
-                          }}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                            <circle cx="12" cy="13" r="4"/>
-                          </svg>
-                          <span>{userState?.avatar ? "Rasm almashtirish" : "Rasm yuklash"}</span>
-                        </button>
-
-                        {userState?.avatar && (
-                          <button 
-                            type="button" 
-                            onClick={handleAvatarRemove}
-                            style={{
-                              background: "rgba(239, 68, 68, 0.1)",
-                              color: "#ef4444",
-                              border: "none",
-                              borderRadius: "8px",
-                              padding: "6px 12px",
-                              fontSize: "12px",
-                              fontWeight: "700",
-                              cursor: "pointer",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "6px",
-                              transition: "all 0.2s"
-                            }}
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="3 6 5 6 21 6"/>
-                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                            </svg>
-                            <span>O'chirish</span>
-                          </button>
-                        )}
-                      </div>
-                      {completion < 100 && (
-                        <div className="profile-warning-badge" style={{
-                          background: "#fffbeb",
-                          border: "1px solid #fef3c7",
-                          color: "#d97706",
-                          padding: "6px 12px",
-                          borderRadius: "12px",
-                          fontSize: "11px",
-                          fontWeight: "700",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          marginTop: "8px",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.5px"
-                        }}>
-                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#d97706", display: "inline-block" }} />
-                          Profil to'ldirilmagan ({completion}%)
-                        </div>
-                      )}
-                    </div>
-                    <a className="profile-edit-button" href="/profile-edit">
-                      <ProfileIcon type="edit" />
-                      Anketa tahrirlash
+                      <span className="pf-hero-track" aria-hidden="true"><i style={{ width: `${completion}%` }} /></span>
+                      <span className="pf-hero-fill">
+                        {t("prof_fill_action")}
+                        <ProfileIcon type="arrow" />
+                      </span>
                     </a>
-                  </div>
+                  ) : null}
                 </section>
 
                 <ProfileStats
@@ -555,13 +297,8 @@ function UserProfile({ userState, setUserState }) {
                 />
 
                 {activeBookingObj && (
-                  <section className="profile-active-booking-section" style={{ marginTop: "32px" }}>
-                    <div className="profile-section-head">
-                      <div>
-                        <span>Faol buyurtma</span>
-                        <h2>Arizangiz holati</h2>
-                      </div>
-                    </div>
+                  <section className="profile-active-booking-section pf-block">
+                    <h2 className="pf-block-title">{t("prof_active_kicker")}</h2>
                     <div className="host-listings-grid" style={{ display: "grid", gap: "24px" }}>
                       <article className="host-listing-shell" style={{ overflow: "visible" }}>
                         <PropertyCard 
@@ -588,14 +325,14 @@ function UserProfile({ userState, setUserState }) {
                             display: "inline-block", 
                             marginBottom: "12px" 
                           }}>
-                            {bookingStatusLabel(activeBookingObj.status)}
+                            {bookingStatusLabel(activeBookingObj.status, t)}
                           </span>
                           <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "12px" }}>
                             <div style={{ fontSize: "13px", color: "#64748b" }}>
-                              Vaqt: <strong style={{ color: "#1e293b" }}>{formatBookingPeriod(activeBookingObj)}</strong>
+                              {t("prof_time")} <strong style={{ color: "#1e293b" }}>{formatBookingPeriod(activeBookingObj, lang)}</strong>
                             </div>
                             <div style={{ fontSize: "13px", color: "#64748b" }}>
-                              To'lov holati: <strong style={{ color: "#1e293b" }}>{paymentStatusLabel(activeBookingObj.payment_status)}</strong>
+                              {t("prof_payment_status")} <strong style={{ color: "#1e293b" }}>{paymentStatusLabel(activeBookingObj.payment_status, t)}</strong>
                             </div>
                           </div>
                         </div>
@@ -604,7 +341,7 @@ function UserProfile({ userState, setUserState }) {
                   </section>
                 )}
 
-                <ProfileDetailsCard profileData={profileData} missing={missingFields} />
+                <ProfileDetailsCard profileData={profileData} />
               </div>
             ) : null}
 
@@ -627,23 +364,16 @@ function UserProfile({ userState, setUserState }) {
 
             {activeTab === "likes" ? (
               <div className="profile-tab-panel" key="likes">
-                <div className="profile-section-head">
-                  <div>
-                    <span>Saqlangan</span>
-                    <h2>Saqlangan joylar</h2>
-                  </div>
-                </div>
-
                 {favoritesUsingDevFallback ? <span className="profile-dev-fallback">DEV fallback</span> : null}
                 {favoritesLoading ? (
-                  <div className="profile-bookings-state">Saqlangan joylar yuklanmoqda...</div>
+                  <div className="profile-bookings-state">{t("fav_loading")}</div>
                 ) : favoritesError ? (
-                  <div className="profile-bookings-state is-error" role="alert">{favoritesError}</div>
+                  <div className="profile-bookings-state is-error" role="alert">{favoritesError === "fav_sign_in" ? t("fav_sign_in") : favoritesError}</div>
                 ) : likedSpaces.length === 0 ? (
                   <div className="profile-empty-state">
                     <span><ProfileIcon type="heart" /></span>
-                    <h3>Hozircha saqlangan joylar yo'q</h3>
-                    <p>Yoqtirgan joylaringizdagi saqlash tugmasini bosing.</p>
+                    <h3>{t("fav_empty_title")}</h3>
+                    <p>{t("fav_empty_text")}</p>
                   </div>
                 ) : (
                   <div className="profile-liked-grid">
@@ -660,8 +390,6 @@ function UserProfile({ userState, setUserState }) {
               </div>
             ) : null}
           </div>
-        </section>
-      </section>
 
       {selectedListing && (
         <HostListingDetailModal
@@ -681,17 +409,14 @@ function UserProfile({ userState, setUserState }) {
           >
             <div className="profile-cancel-modal-icon" aria-hidden="true">!</div>
             <div>
-              <span>Bronni bekor qilish</span>
-              <h2 id="profile-cancel-modal-title">Qaroringizni tasdiqlang</h2>
-              <p>
-                <strong>{cancelBookingTarget.place_title}</strong> uchun bron bekor qilinadi.
-                Bu amal backend orqali bajariladi.
-              </p>
+              <span>{t("hist_modal_kicker")}</span>
+              <h2 id="profile-cancel-modal-title">{t("hist_modal_title")}</h2>
+              <p>{t("hist_modal_text", { place: cancelBookingTarget.place_title })}</p>
             </div>
             {cancelError ? <div className="profile-cancel-modal-error" role="alert">{cancelError}</div> : null}
             <div className="profile-cancel-modal-actions">
               <button type="button" onClick={closeCancelBookingModal} disabled={Boolean(cancellingBookingId)}>
-                Qaytish
+                {t("hist_modal_back")}
               </button>
               <button
                 type="button"
@@ -699,13 +424,13 @@ function UserProfile({ userState, setUserState }) {
                 onClick={handleCancelBooking}
                 disabled={Boolean(cancellingBookingId)}
               >
-                {cancellingBookingId ? "Bekor qilinmoqda..." : "Ha, bronni bekor qilish"}
+                {cancellingBookingId ? t("hist_cancelling") : t("hist_modal_confirm")}
               </button>
             </div>
           </div>
         </div>
       ) : null}
-    </main>
+    </>
   );
 }
 

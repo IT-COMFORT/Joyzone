@@ -29,20 +29,6 @@
   line-height: 1.12;
 }
 
-.bf-brand {
-  position: relative;
-  display: inline-block;
-  color: var(--bf-orange);
-}
-
-.bf-curve {
-  position: absolute;
-  left: 42%;
-  bottom: -0.2em;
-  width: 62%;
-  height: 0.24em;
-}
-
 .bf-head p {
   max-width: 560px;
   margin-top: 14px;

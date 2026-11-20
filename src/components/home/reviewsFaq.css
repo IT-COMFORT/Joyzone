@@ -11,25 +11,6 @@
   color: var(--rfq-ink);
 }
 
-.rfq-kicker {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--rfq-orange);
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.rfq-kicker::before {
-  content: "";
-  width: 18px;
-  height: 2px;
-  border-radius: 2px;
-  background: currentColor;
-}
-
 .rfq h2 {
   margin-top: 10px;
   color: var(--rfq-navy);
@@ -40,6 +21,11 @@
 }
 
 /* --- reviews --- */
+
+.rfq-head h2 {
+  margin-top: 0;
+  padding-bottom: 0.2em;
+}
 
 .rfq-head {
   display: grid;
@@ -221,12 +207,23 @@
 
 
 
+.rfq-faq-head h2 {
+  margin-top: 0;
+  padding-bottom: 0.2em;
+}
+
+/* Topic tabs sit above the questions, aligned to their left edge. */
+.rfq-main {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
 .rfq-topics {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 8px;
-  margin-top: 16px;
 }
 
 .rfq-topics button {

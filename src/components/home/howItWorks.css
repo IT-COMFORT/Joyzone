@@ -236,11 +236,6 @@
 }
 
 .hiw-video-btn,
-.hiw-demo-label {
-  margin-left: auto;
-  flex-shrink: 0;
-}
-
 .hiw-video-btn {
   display: inline-flex;
   align-items: center;
@@ -259,12 +254,6 @@
 .hiw-video-btn:hover {
   background: var(--hiw-orange);
   border-color: var(--hiw-orange);
-}
-
-.hiw-demo-label {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 12px;
-  font-weight: 700;
 }
 
 /* --- steps --- */
@@ -1304,10 +1293,6 @@
 
   .hiw-screen-bar em {
     font-size: 10.5px;
-  }
-
-  .hiw-demo-label {
-    display: none;
   }
 
   .hiw-steps button {

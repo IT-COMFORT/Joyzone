@@ -70,7 +70,7 @@ class PublicPartnerSerializer(serializers.Serializer):
     tariff = serializers.SerializerMethodField()
 
     def get_name(self, user):
-        return user.company_name or user.get_full_name() or 'Joyzone hamkori'
+        return user.company_name or user.get_full_name() or 'Joyzone agenti'
 
     def get_tariff(self, user):
         if not has_active_paid_tariff(user):

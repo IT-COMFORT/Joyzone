@@ -291,6 +291,30 @@ class PlaceViewSet(viewsets.ModelViewSet):
             item['is_ad'] = item['id'] in ad_ids
         return Response({'results': data, 'total': publicly_visible_places().count()})
 
+    @extend_schema(
+        responses=inline_serializer(
+            name='PublicStatsResponse',
+            fields={
+                'places': serializers.IntegerField(),
+                'partners': serializers.IntegerField(),
+                'bookings': serializers.IntegerField(),
+                'formats': serializers.IntegerField(),
+            },
+        ),
+        tags=['places'],
+    )
+    @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
+    def stats(self, request):
+        """Live numbers for the about page: public places, their owners,
+        bookings that were not cancelled or blocked, and place formats."""
+        public = publicly_visible_places()
+        return Response({
+            'places': public.count(),
+            'partners': public.exclude(owner=None).values('owner').distinct().count(),
+            'bookings': Booking.objects.exclude(status__in=('cancelled', 'blocked')).count(),
+            'formats': public.exclude(subcategory=None).values('subcategory').distinct().count(),
+        })
+
     def _apply_place_filters(self, qs):
         params = self.request.query_params
 
@@ -382,7 +406,7 @@ class PlaceViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         # Only partners list places; clients fill the partner form first.
         if not (is_partner(request.user) or is_admin_or_moderator(request.user)):
-            raise PermissionDenied("Joy qo'shish uchun avval hamkor bo'ling (/partner-guide).")
+            raise PermissionDenied("E'lon qo'shish uchun avval ariza qoldiring (/partner-guide).")
         return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):

@@ -2,8 +2,8 @@
 export const ABOUT_TEXT = {
   uz: {
     findCta: "Joy izlash",
-    becomeCta: "Hamkor bo'lish",
-    addCta: "Joy qo'shish",
+    becomeCta: "E'lon joylashtirish",
+    addCta: "E'lon qo'shish",
     forKicker: "Kimlar uchun",
     forTitle: "Joyzone ikki tomonni bog'laydi",
     renters: {
@@ -11,8 +11,8 @@ export const ABOUT_TEXT = {
       title: "Kerakli joyni tez toping",
       points: [
         "Ofis, kovorking, zal, do'kon va omborlar bitta katalogda",
-        "Narx, maydon, sig'im va manzil bo'yicha filtr",
-        "Bron so'rovini bir necha bosishda yuboring",
+        "Narx, maydon, sig'im va manzil bo'yicha saralash",
+        "Bron so'rovini bir necha soniyada yuboring",
       ],
       cta: "Katalogni ochish",
     },
@@ -21,23 +21,24 @@ export const ABOUT_TEXT = {
       title: "Joyingizdan daromad oling",
       points: [
         "E'lonni 5 daqiqada joylashtiring",
-        "Arizalar, chat va kalendar bitta kabinetda",
-        "Standard tarifda 1 ta joy — bepul",
+        "Arizalar, yozishmalar va taqvim bitta kabinetda",
+        "Standart tarifda 1 ta joy bepul",
       ],
-      cta: "Hamkor bo'lish",
+      cta: "E'lon joylashtirish",
     },
+    stats: { places: "Katalogdagi joylar", partners: "E'lon beruvchilar", bookings: "Bron so'rovlari", formats: "Joy turlari" },
     howKicker: "Qanday ishlaydi",
-    howTitle: "Uch qadam — va joy sizniki",
+    howTitle: "Uch qadamda joy sizniki",
     how: [
-      { title: "Toping", text: "Katalogda format, narx va hudud bo'yicha saralang." },
+      { title: "Toping", text: "Katalogda joy turi, narx va hudud bo'yicha saralang." },
       { title: "Solishtiring", text: "Rasmlar, qulayliklar, sharhlar va egasining profilini ko'ring." },
       { title: "Bron qiling", text: "Sana va vaqtni tanlang — egasi so'rovni tasdiqlaydi." },
     ],
     valuesKicker: "Tamoyillarimiz",
-    valuesTitle: "Biz nimaga e'tibor beramiz",
+    valuesTitle: "Biz nimalarga e'tibor beramiz",
     contactKicker: "Aloqa",
     contactTitle: "Savolingiz bormi?",
-    contactText: "Yozing yoki qo'ng'iroq qiling — jamoamiz yordam beradi.",
+    contactText: "Yozing yoki qo'ng'iroq qiling, jamoamiz yordam beradi.",
   },
   ru: {
     findCta: "Найти место",
@@ -65,6 +66,7 @@ export const ABOUT_TEXT = {
       ],
       cta: "Стать партнёром",
     },
+    stats: { places: "Мест в каталоге", partners: "Партнёров", bookings: "Заявок на бронь", formats: "Форматов мест" },
     howKicker: "Как это работает",
     howTitle: "Три шага — и место ваше",
     how: [
@@ -104,6 +106,7 @@ export const ABOUT_TEXT = {
       ],
       cta: "Become a partner",
     },
+    stats: { places: "Places listed", partners: "Partners", bookings: "Booking requests", formats: "Space formats" },
     howKicker: "How it works",
     howTitle: "Three steps to your space",
     how: [

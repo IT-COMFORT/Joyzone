@@ -1,0 +1,15 @@
+/* Orange word in section headings, with the curve under its end. */
+.accent-word {
+  position: relative;
+  display: inline-block;
+  color: #e46630;
+}
+
+.accent-curve {
+  position: absolute;
+  right: -0.06em;
+  bottom: -0.2em;
+  width: min(2.4em, 72%);
+  height: 0.24em;
+  pointer-events: none;
+}

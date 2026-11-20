@@ -6,6 +6,7 @@ import { VideoModal } from "./VideoModal.jsx";
 import "./reviewsFaq.css";
 import SupportIcon from "../ui/SupportIcon.jsx";
 import { partnerEntryHref, useAccountRole } from "../../utils/partnerAccess.js";
+import AccentTitle from "../ui/AccentTitle.jsx";
 
 // Demo quotes are shown only in local development when there are no reviews.
 const DEV_REVIEWS = [
@@ -104,7 +105,7 @@ function ReviewsMarquee({ reviews }) {
 // Topics: a chip filter plus the icon shown next to each question.
 const FAQ_TOPICS = [
   { id: "booking", label: "Bron", match: /bron|брон|book/i, icon: ["M4 6h16v14H4z", "M4 10h16", "M8 3v4M16 3v4"] },
-  { id: "partner", label: "Hamkorlik", match: /partner|hamkor|партн|obyekt|объект|listing/i, icon: ["M5 21V8l7-4 7 4v13", "M9 21v-5h6v5"] },
+  { id: "partner", label: "E'lonlar", match: /partner|hamkor|партн|obyekt|объект|listing/i, icon: ["M5 21V8l7-4 7 4v13", "M9 21v-5h6v5"] },
   { id: "price", label: "Tarif va narx", match: /tarif|тариф|plan|narx|цен|price|to'lov|оплат|pay/i, icon: ["M4 8l4 4 4-7 4 7 4-4v10H4z"] },
   { id: "map", label: "Manzil", match: /xarita|карт|map|manzil|адрес|location/i, icon: ["M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z", "M12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"] },
 ];
@@ -125,8 +126,8 @@ function LineIcon({ paths, size = 20 }) {
 
 const QUICK_LINKS = [
   { key: "faq_link_catalog", label: "Joylar katalogi", href: "/filter" },
-  { key: "faq_link_add", label: "Joy qo'shish", href: "/partner" },
-  { key: "faq_link_guide", label: "Hamkorlar qo'llanmasi", href: "/partner-guide" },
+  { key: "faq_link_add", label: "E'lon qo'shish", href: "/partner" },
+  { key: "faq_link_guide", label: "E'lon joylash qo'llanmasi", href: "/partner-guide" },
   { key: "faq_link_profile", label: "Mening bronlarim", href: "/profile" },
 ];
 
@@ -166,8 +167,7 @@ export function ReviewsFaqSection({ cms = {} }) {
       {reviews.length ? (
         <div className="rfq-reviews">
           <div className="rfq-head">
-            <span className="rfq-kicker">{cms.rev_title || "Sharhlar"}</span>
-            <h2>{cms.rev_heading || "Mijozlarimiz fikri"}</h2>
+            <h2><AccentTitle text={cms.rev_heading || "Mijozlarimiz fikri"} /></h2>
             <p>{cms.rev_sub || "Joyzone orqali joy band qilganlarning haqiqiy sharhlari."}</p>
           </div>
           <ReviewsMarquee reviews={reviews} />
@@ -176,9 +176,12 @@ export function ReviewsFaqSection({ cms = {} }) {
 
       <div className="rfq-faq">
         <header className="rfq-faq-head">
-          <span className="rfq-kicker">{cms.faq_kicker || "FAQ"}</span>
-          <h2>{cms.faq_title || "Ko'p beriladigan savollar"}</h2>
-          <p>{cms.faq_sub || "Bron, hamkorlik va platforma haqida asosiy javoblar bir joyda."}</p>
+          <h2><AccentTitle text={cms.faq_title || "Ko'p beriladigan savollar"} /></h2>
+          <p>{cms.faq_sub || "Bron, e'lon joylashtirish va platforma haqida asosiy javoblar bir joyda."}</p>
+        </header>
+
+        <div className="rfq-faq-body">
+          <div className="rfq-main">
           {topics.length > 1 ? (
             <div className="rfq-topics" role="group" aria-label="Mavzular">
               <button type="button" className={!topic ? "is-active" : ""} onClick={() => chooseTopic("")}>
@@ -192,9 +195,6 @@ export function ReviewsFaqSection({ cms = {} }) {
               ))}
             </div>
           ) : null}
-        </header>
-
-        <div className="rfq-faq-body">
           <div className="rfq-list">
             {visibleFaqs.length ? visibleFaqs.map((item, position) => {
               const isOpen = openIndex === item.index;
@@ -227,6 +227,7 @@ export function ReviewsFaqSection({ cms = {} }) {
                 <button type="button" onClick={() => chooseTopic("")}>{cms.faq_reset || "Barcha savollar"}</button>
               </div>
             )}
+          </div>
           </div>
 
           <aside className="rfq-side">

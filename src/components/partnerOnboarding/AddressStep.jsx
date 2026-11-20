@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Icon } from "./parts.jsx";
+import { useOnboardingText } from "./onboardingText.js";
 
 const DEFAULT_CENTER = [41.2995, 69.2401];
 
@@ -9,12 +10,14 @@ export function AddressStep({ address, setAddress, lat, setLat, lng, setLng, con
   const myMarker = useRef(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
+  const { t: text, lang } = useOnboardingText();
+  const t = text.address;
 
   const reverseGeocode = async (nextLat, nextLng) => {
-    setAddress("Поиск адреса...");
+    setAddress(t.searching);
     setConfirmed(false);
     try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${nextLat}&lon=${nextLng}&accept-language=ru`);
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${nextLat}&lon=${nextLng}&accept-language=${lang}`);
       const data = await response.json();
       setLat(nextLat);
       setLng(nextLng);
@@ -23,11 +26,11 @@ export function AddressStep({ address, setAddress, lat, setLat, lng, setLng, con
         setConfirmed(true);
       } else {
         setAddress("");
-        setSearchError("Адрес не найден — впишите его вручную.");
+        setSearchError(t.notFound);
       }
     } catch {
       setAddress("");
-      setSearchError("Не удалось определить адрес — впишите его вручную.");
+      setSearchError(t.failed);
     }
   };
 
@@ -87,10 +90,10 @@ export function AddressStep({ address, setAddress, lat, setLat, lng, setLng, con
     setSearching(true);
     setSearchError("");
     try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=uz&accept-language=ru&q=${encodeURIComponent(query)}`);
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=uz&accept-language=${lang}&q=${encodeURIComponent(query)}`);
       const [found] = await response.json();
       if (!found) {
-        setSearchError("Ничего не нашли. Уточните адрес или поставьте точку на карте.");
+        setSearchError(t.nothing);
         return;
       }
       const nextLat = Number(found.lat);
@@ -102,7 +105,7 @@ export function AddressStep({ address, setAddress, lat, setLat, lng, setLng, con
       myMarker.current?.setLatLng([nextLat, nextLng]);
       myMap.current?.setView([nextLat, nextLng], 16);
     } catch {
-      setSearchError("Поиск недоступен. Поставьте точку на карте вручную.");
+      setSearchError(t.unavailable);
     } finally {
       setSearching(false);
     }
@@ -118,19 +121,19 @@ export function AddressStep({ address, setAddress, lat, setLat, lng, setLng, con
             value={address}
             onChange={(event) => { setAddress(event.target.value); setConfirmed(false); setSearchError(""); }}
             onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); searchAddress(); } }}
-            placeholder="Улица, дом, район"
+            placeholder={t.placeholder}
           />
         </span>
         <button type="button" className="pow-btn is-outline-dark" disabled={!address.trim() || searching} onClick={searchAddress}>
-          {searching ? "Ищем..." : "Найти"}
+          {searching ? t.findBusy : t.find}
         </button>
       </div>
       <div className="pow-map" ref={mapRef} />
       <div className="pow-address-foot">
         {searchError ? <span className="pow-field-error">{searchError}</span> : confirmed ? (
-          <span className="pow-confirmed"><Icon name="check-circle" />Адрес подтверждён</span>
+          <span className="pow-confirmed"><Icon name="check-circle" />{t.confirmed}</span>
         ) : (
-          <span className="pow-muted">Найдите адрес, кликните по карте или подтвердите вписанный адрес.</span>
+          <span className="pow-muted">{t.help}</span>
         )}
         <button
           type="button"
@@ -139,7 +142,7 @@ export function AddressStep({ address, setAddress, lat, setLat, lng, setLng, con
           disabled={!address.trim() || confirmed}
           onClick={() => setConfirmed(true)}
         >
-          {confirmed ? "Подтверждено" : "Подтвердить адрес"}
+          {confirmed ? t.confirmedBtn : t.confirmBtn}
         </button>
       </div>
     </div>

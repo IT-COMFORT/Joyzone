@@ -19,11 +19,11 @@ const QUIET_ROUTES = /^(?:partner|partner-guide|login|register|verify|forgot|adm
 
 const TEXT = {
   uz: {
-    kicker: "Hamkorlar uchun",
-    title: "Joyingiz bormi? Uni Joyzone'da ijaraga bering",
-    text: "Ofis, kovorking, zal yoki omboringizni joylashtiring — mijozlar o'zi topadi.",
+    kicker: "Joy egalari uchun",
+    title: "Joyingiz bormi? Joyzone'da ijaraga bering yoki soting",
+    text: "Ofis, kovorking, zal, do'kon yoki omboringiz uchun e'lon joylashtiring — mijozlar o'zi topadi.",
     points: ["Standard tarifda 1 ta joy bepul", "Arizalar va chat bitta kabinetda", "Ariza — atigi 2 daqiqa"],
-    cta: "Hamkor bo'lish",
+    cta: "E'lon joylashtirish",
     later: "Keyinroq",
     close: "Yopish",
     listed: "Joyzone'da",
@@ -36,8 +36,8 @@ const TEXT = {
   },
   ru: {
     kicker: "Для владельцев",
-    title: "Есть свободное место? Сдавайте его через Joyzone",
-    text: "Разместите офис, коворкинг, зал или склад — клиенты найдут его сами.",
+    title: "Есть помещение? Сдайте или продайте его через Joyzone",
+    text: "Разместите объявление об офисе, коворкинге, зале, магазине или складе — клиенты найдут его сами.",
     points: ["1 место бесплатно на тарифе Standard", "Заявки и чат в одном кабинете", "Заявка — всего 2 минуты"],
     cta: "Стать партнёром",
     later: "Позже",
@@ -52,8 +52,8 @@ const TEXT = {
   },
   en: {
     kicker: "For owners",
-    title: "Got a free space? Rent it out on Joyzone",
-    text: "List your office, coworking, hall or warehouse — clients will find it.",
+    title: "Got a space? Rent it out or sell it on Joyzone",
+    text: "Post a listing for your office, coworking, hall, shop or warehouse — clients will find it.",
     points: ["1 place free on the Standard plan", "Requests and chat in one cabinet", "Apply in just 2 minutes"],
     cta: "Become a partner",
     later: "Later",

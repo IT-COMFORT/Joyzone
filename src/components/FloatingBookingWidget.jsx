@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useText } from "../context/LanguageContext.jsx";
 import { gsap } from "gsap";
 import { PropertyCard } from "./ListingsSection.jsx";
 import { normalizePlace } from "../utils/placeMapper.js";
@@ -8,6 +9,7 @@ import "./FloatingBookingWidget.css";
 export default function FloatingBookingWidget({ activeBooking }) {
   const widgetRef = useRef(null);
   const [showDetails, setShowDetails] = useState(false);
+  const { t } = useText();
 
   // Manage body classes for coordinating position with floating contact button
   useEffect(() => {
@@ -76,7 +78,7 @@ export default function FloatingBookingWidget({ activeBooking }) {
       const pad = (n) => String(n).padStart(2, "0");
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     } catch (e) {
-      return "Hozir";
+      return t("cab_now");
     }
   })();
 
@@ -85,7 +87,7 @@ export default function FloatingBookingWidget({ activeBooking }) {
   const formattedTotal = new Intl.NumberFormat('ru-RU').format(totalVal) + ` ${booking.currency || "UZS"}`;
   const guestsCount = booking.guests || 1;
   const startDateVal = booking.startDate || booking.start_date || new Date().toISOString().split("T")[0];
-  const durationVal = activeBooking.duration || booking.durationLabel || "1 kun";
+  const durationVal = activeBooking.duration || t(`duration_${booking.duration_type || "daily"}`);
   const methodVal = activeBooking.method || "card";
 
   const spaceItem = normalizePlace(booking.place_details || activeBooking.place || {

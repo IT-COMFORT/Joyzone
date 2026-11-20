@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { gsap } from "gsap";
 import { revealText } from "../utils/textReveal.js";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import AccentTitle from "./ui/AccentTitle.jsx";
 
 gsap.registerPlugin(ScrollTrigger);
 import { NoteIcon } from "./ui/Shared.jsx";
@@ -16,7 +17,7 @@ import "./ListingsSection.css";
 import "./footer.css";
 import SupportIcon from "./ui/SupportIcon.jsx";
 import "./CardVariants.css";
-import { useSiteContent } from "../context/LanguageContext.jsx";
+import { useSiteContent, useText } from "../context/LanguageContext.jsx";
 import { HowItWorksSection } from "./home/HowItWorks.jsx";
 import { ReviewsFaqSection } from "./home/ReviewsFaq.jsx";
 import { BenefitsSection } from "./home/Benefits.jsx";
@@ -65,10 +66,10 @@ function usePublicPartners() {
 }
 
 const DURATION_LABELS = {
-  soatlik: "soatlik",
-  kunlik: "kunlik",
-  haftalik: "haftalik",
-  oylik: "oylik"
+  soatlik: "card_hourly",
+  kunlik: "card_daily",
+  haftalik: "card_weekly",
+  oylik: "card_monthly"
 };
 
 // Same priority as getPrimaryPlacePriceValue: the card's default price is the
@@ -86,12 +87,12 @@ function primaryPriceLabel(item) {
 }
 
 // Real room / seat count from the place characteristics; nothing when unknown.
-function placeUnitsLabel(item) {
+function placeUnitsLabel(item, t) {
   const traits = item.characteristics || {};
   const rooms = Number(traits.rooms || traits.meeting_rooms);
-  if (rooms > 0) return `${rooms} xona`;
+  if (rooms > 0) return t("card_rooms", { n: rooms });
   const seats = Number(traits.workplaces || traits.desks);
-  if (seats > 0) return `${seats} o'rin`;
+  if (seats > 0) return t("card_seats", { n: seats });
   return "";
 }
 
@@ -129,32 +130,8 @@ function agentBadge(tariff, cms) {
   return `${tariff.name} agent`;
 }
 
-// Small orange underline for section headings (positioned by .title-curve).
-function TitleCurve() {
-  return (
-    <svg className="title-curve" width="80" height="10" viewBox="0 0 80 10" fill="none" aria-hidden="true">
-      <path d="M2 8C22 1 58 1 78 8" stroke="#E46630" strokeWidth="3" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
-}
-
-function HighlightedTitle({ text, highlight = "Joyzone" }) {
-  const value = String(text || "");
-  const index = value.toLowerCase().indexOf(highlight.toLowerCase());
-  if (highlight && index >= 0) {
-    return (
-      <>
-        {value.slice(0, index)}
-        <span>{value.slice(index, index + highlight.length)}</span>
-        {value.slice(index + highlight.length)}
-      </>
-    );
-  }
-  const [firstWord, ...rest] = value.split(/\s+/);
-  return <><span>{firstWord}</span>{rest.length ? ` ${rest.join(" ")}` : ""}</>;
-}
-
 export function PropertyCard({ item, index, href, onClick, selectedDuration, viewMode = "grid" }) {
+  const { t, lang } = useText();
   const [activeImage, setActiveImage] = useState(0);
   const [saved, setSaved] = useState(isPlaceFavorited(item.id));
   const [favoritePending, setFavoritePending] = useState(false);
@@ -175,17 +152,17 @@ export function PropertyCard({ item, index, href, onClick, selectedDuration, vie
   // Resolve displayed price and label
   const { displayPrice, priceLabel, priceUnavailable } = (() => {
     if (item.isForSale) {
-      return { displayPrice: item.price, priceLabel: "sotuv narxi", priceUnavailable: false };
+      return { displayPrice: item.price, priceLabel: t("card_sale"), priceUnavailable: false };
     }
     if (!selectedDuration) {
-      return { displayPrice: item.price, priceLabel: primaryPriceLabel(item), priceUnavailable: false };
+      return { displayPrice: item.price, priceLabel: t(primaryPriceLabel(item)), priceUnavailable: false };
     }
     const specificPrice = item.prices?.[selectedDuration];
     if (specificPrice) {
-      return { displayPrice: specificPrice, priceLabel: DURATION_LABELS[selectedDuration], priceUnavailable: false };
+      return { displayPrice: specificPrice, priceLabel: t(DURATION_LABELS[selectedDuration]), priceUnavailable: false };
     }
     // duration selected but this card doesn't have it
-    return { displayPrice: item.price, priceLabel: primaryPriceLabel(item), priceUnavailable: true };
+    return { displayPrice: item.price, priceLabel: t(primaryPriceLabel(item)), priceUnavailable: true };
   })();
 
   useEffect(() => {
@@ -215,7 +192,7 @@ export function PropertyCard({ item, index, href, onClick, selectedDuration, vie
       const favorites = await toggleFavoritePlace(item);
       setSaved(favorites.some((favorite) => String(favorite.id) === String(item.id)));
     } catch (error) {
-      setFavoriteError(getApiErrorMessage(error, "Не удалось обновить избранное"));
+      setFavoriteError(getApiErrorMessage(error, t("card_err_favorite"), lang));
       setSaved(isPlaceFavorited(item.id));
     } finally {
       setFavoritePending(false);
@@ -227,7 +204,7 @@ export function PropertyCard({ item, index, href, onClick, selectedDuration, vie
       <a 
         className="property-card-link" 
         href={cardHref} 
-        aria-label={`${item.title} sahifasini ochish`} 
+        aria-label={t("card_open", { name: item.title })} 
         onClick={(e) => {
           if (onClick) {
             e.preventDefault();
@@ -242,7 +219,7 @@ export function PropertyCard({ item, index, href, onClick, selectedDuration, vie
         type="button"
         className={`variant-save-button ${saved ? "is-saved" : ""}`}
         onClick={toggleSave}
-        aria-label={saved ? "Eslatmaga saqlandi" : "Eslatmaga saqlash"}
+        aria-label={saved ? t("card_saved") : t("card_save")}
         aria-pressed={saved}
         aria-busy={favoritePending}
         disabled={favoritePending}
@@ -266,13 +243,13 @@ export function PropertyCard({ item, index, href, onClick, selectedDuration, vie
         {item.isForSale ? (
           <span className={`variant-pill is-sale ${(item.is_ad ?? item.promoted) ? "is-stacked" : ""}`}>Sotuvda</span>
         ) : null}
-        <div className="variant-dots" aria-label="Rasmni tanlash" style={{ zIndex: 20 }}>
+        <div className="variant-dots" aria-label={t("card_pick_image")} style={{ zIndex: 20 }}>
           {item.images.map((_, imageIndex) => (
             <button
               key={`${imageIndex}-dot`}
               type="button"
               className={imageIndex === activeImage ? "is-active" : ""}
-              aria-label={`${imageIndex + 1}-rasm`}
+              aria-label={t("card_image", { n: imageIndex + 1 })}
               aria-pressed={imageIndex === activeImage}
               onClick={(event) => {
                 event.preventDefault();
@@ -289,24 +266,24 @@ export function PropertyCard({ item, index, href, onClick, selectedDuration, vie
           <h3>{item.title}</h3>
           <div className="variant-price-block">
             <strong className={priceUnavailable ? "is-muted" : ""}>{displayPrice}</strong>
-            <span className="variant-price-label">{priceUnavailable ? "— bu muddat yo'q" : priceLabel}</span>
+            <span className="variant-price-label">{priceUnavailable ? t("card_no_duration") : priceLabel}</span>
           </div>
         </div>
         <p>{item.location}</p>
         <div className="variant-spec-row">
           <span className="variant-spec">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8" /></svg>
-            {item.people} kishi
+            {t("card_people_count", { n: item.people })}
           </span>
-          {placeUnitsLabel(item) ? (
+          {placeUnitsLabel(item, t) ? (
             <span className="variant-spec">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V5a3 3 0 0 1 6 0v1M5 10h16v2a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5v-2ZM8 21h8" /></svg>
-              {placeUnitsLabel(item)}
+              {placeUnitsLabel(item, t)}
             </span>
           ) : null}
           <span className="variant-spec">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM8 8h8M8 12h5M8 16h8" /></svg>
-            {item.area} m2
+            {t("card_area", { n: item.area })}
           </span>
         </div>
       </div>
@@ -455,8 +432,7 @@ function PartnerAgents({ cms = {} }) {
     >
       <div className="agents-head">
         <h2>
-          <HighlightedTitle text={cms.agent_title || "Top agentlar"} highlight="Top" />
-          <TitleCurve />
+          <AccentTitle text={cms.agent_title || "Top agentlar"} highlight="Top" />
         </h2>
         <p>{cms.agent_sub || "Joyzone'dagi eng faol va ishonchli joy egalari."}</p>
       </div>
@@ -640,7 +616,7 @@ export function FooterQuestionStrip({ cms: cmsProp }) {
       </ul>
       <div className="owner-strip-actions">
         <a className="owner-strip-btn" href={partnerEntryHref(role)}>
-          <span>{cms.owner_cta || "Joy qo'shish"}</span>
+          <span>{cms.owner_cta || "E'lon qo'shish"}</span>
           <span className="owner-strip-btn-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>
           </span>
@@ -661,7 +637,7 @@ function useFooterCms(cmsProp) {
 export function JoyFooter({ cms: cmsProp }) {
   const cms = useFooterCms(cmsProp);
   const { lang } = useSiteContent();
-  const { role, canListPlaces } = useAccountRole();
+  const { canListPlaces } = useAccountRole();
   const socials = socialLinks(cms).map(([type, , href]) => [type, href]);
   const linkOptions = { canListPlaces, addLabel: (PARTNER_CTA_TEXT[lang] || PARTNER_CTA_TEXT.uz).add };
   const columns = [
@@ -688,10 +664,6 @@ export function JoyFooter({ cms: cmsProp }) {
           <a href={mailHref(email)} className="joy-footer-contact is-mail">
             <span className="joy-footer-contact-icon"><FooterIcon type="mail" /></span>
             <span className="joy-footer-contact-text">{email}</span>
-          </a>
-          <a href={partnerEntryHref(role)} className="joy-footer-cta">
-            <span>{cms.footer_cta || "Ariza qoldirish"}</span>
-            <FooterIcon type="arrow" />
           </a>
         </div>
 
@@ -720,7 +692,7 @@ export function JoyFooter({ cms: cmsProp }) {
         </div>
 
         <div className="joy-footer-bottom">
-          <span>{cms.footer_copyright || "©2026 JOY HUB. Barcha huquqlar himoyalangan."}</span>
+          <span>{cms.footer_copyright || "©2026 Joyzone. Barcha huquqlar himoyalangan."}</span>
           <span>{cms.footer_powered || "Powered by IT Comfort"}</span>
         </div>
       </div>
@@ -847,8 +819,7 @@ export default function ListingsSection({
       <div className="listings-inner">
         <div className="listings-head">
           <h2>
-            <HighlightedTitle text={cms.popular_title || "Ommabop joylar"} highlight="" />
-            <TitleCurve />
+            <AccentTitle text={cms.popular_title || "Ommabop joylar"} />
           </h2>
           <p className="listings-sub">{cms.popular_subtitle || "Eng ko'p izlangan va band qilingan joylar"}</p>
           {usingDevFallback ? <small style={{ color: "#dc2626", fontWeight: 800 }}>DEV fallback places</small> : null}

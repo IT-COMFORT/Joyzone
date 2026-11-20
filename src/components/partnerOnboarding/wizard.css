@@ -9,12 +9,55 @@
   min-height: 0;
   padding: 0 clamp(16px, 3vw, 48px);
   overflow: hidden;
-  background:
-    radial-gradient(1200px 500px at 85% -10%, rgba(228, 102, 48, 0.18), transparent 60%),
-    #294a6d;
+  background: linear-gradient(160deg, #2d5179 0%, #25466a 50%, #1d3754 100%);
 }
 
-.partner-onboarding-page.pow::before { display: none; }
+/* Calm, minimal backdrop: a dot grid that shows only towards the edges
+   (it fades out behind the card) and two soft glows drifting very slowly. */
+.partner-onboarding-page.pow::before,
+.partner-onboarding-page.pow::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  border: 0;
+  border-radius: 0;
+  opacity: 1;
+  pointer-events: none;
+}
+
+.partner-onboarding-page.pow::before {
+  background: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1.4px) 0 0 / 22px 22px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 65% at 50% 52%, transparent 30%, #000 85%);
+  mask-image: radial-gradient(ellipse 70% 65% at 50% 52%, transparent 30%, #000 85%);
+}
+
+.partner-onboarding-page.pow::after {
+  inset: -10%;
+  background:
+    radial-gradient(34vmax 34vmax at 86% 10%, rgba(228, 102, 48, 0.26), transparent 70%),
+    radial-gradient(40vmax 40vmax at 8% 94%, rgba(120, 168, 216, 0.24), transparent 70%);
+  animation: pow-bg-drift 22s ease-in-out infinite alternate;
+}
+
+@keyframes pow-bg-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-3%, 3%, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .partner-onboarding-page.pow::after { animation: none; }
+}
+
+/* Page parts sit above the backdrop. */
+.pow .partner-onboarding-header,
+.pow .pe-nav,
+.pow .pow-card,
+.pow .pow-footer {
+  position: relative;
+  z-index: 1;
+}
 
 .pow .partner-onboarding-header {
   position: relative;
@@ -846,7 +889,8 @@
   font-weight: 800;
 }
 
-.pow-hours label {
+.pow-hours label,
+.pow-hours-field {
   display: grid;
   gap: 4px;
   color: #64748b;
@@ -1063,6 +1107,39 @@
 .pow-btn.is-small:not(:disabled):hover { background: #12283f; color: #ffffff; }
 
 .pow .pe-loading { height: 100%; }
+
+/* Desktop steps: the card is as tall as its content (with a calm minimum)
+   instead of filling the screen, and card + footer sit centred under the
+   header, so short steps no longer float in a big empty card. */
+@media (min-width: 861px) {
+  .pow:not(.is-welcome) {
+    --pow-step-width: 1360px;
+  }
+
+  .pow:not(.is-welcome) .pow-card {
+    flex: 0 1 auto;
+    display: grid;
+    align-content: center;
+    width: min(100%, var(--pow-step-width));
+    min-height: min(680px, 74dvh);
+    margin-top: auto;
+  }
+
+  .pow:not(.is-welcome) .pow-step {
+    min-height: 0;
+  }
+
+  .pow:not(.is-welcome) .pow-footer {
+    width: min(100%, var(--pow-step-width));
+    margin-bottom: auto;
+  }
+
+  .pow:not(.is-welcome) .pe-nav {
+    width: min(100%, var(--pow-step-width));
+  }
+
+  .pow .pe-loading { min-height: 240px; }
+}
 
 /* Shorter laptop screens: tighten everything a notch. */
 @media (max-height: 820px) and (min-width: 861px) {

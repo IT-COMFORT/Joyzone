@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import gsap from "gsap";
-import { chatPartnerAvatar, chatPartnerName, getChatById, isOwnMessage, markChatRead, sendMessageToChat, syncChatsWithBackend } from "../utils/chatManager.js";
+import { CHAT_NO_HOST_NAME, chatPartnerAvatar, chatPartnerName, getChatById, isOwnMessage, markChatRead, sendMessageToChat, syncChatsWithBackend } from "../utils/chatManager.js";
 import { useVisiblePolling } from "../utils/polling.js";
+import { useText } from "../context/LanguageContext.jsx";
 import "./DirectChatDrawer.css";
 
 export function DirectChatDrawer({ chatId, spaceTitle, hostName, onClose }) {
+  const { t } = useText();
   const overlayRef = useRef(null);
   const drawerRef = useRef(null);
   const feedRef = useRef(null);
@@ -94,7 +96,7 @@ export function DirectChatDrawer({ chatId, spaceTitle, hostName, onClose }) {
       setDraft("");
       setSendError("");
     } catch (error) {
-      setSendError("Xabar yuborilmadi. Qayta urinib ko'ring.");
+      setSendError(t("msg_err_send"));
     } finally {
       setSending(false);
     }
@@ -109,7 +111,8 @@ export function DirectChatDrawer({ chatId, spaceTitle, hostName, onClose }) {
 
   if (!chat) return null;
 
-  const displayHostName = chatPartnerName(chat) || hostName || "Ega / Host";
+  const partnerName = chatPartnerName(chat);
+  const displayHostName = (partnerName !== CHAT_NO_HOST_NAME && partnerName) || hostName || t("chat_host");
   const displaySpaceTitle = chat.space || spaceTitle || "Joyzone Space";
 
   return createPortal(
@@ -123,7 +126,7 @@ export function DirectChatDrawer({ chatId, spaceTitle, hostName, onClose }) {
               {chatPartnerAvatar(chat)
                 ? <img src={chatPartnerAvatar(chat)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit" }} />
                 : displayHostName.slice(0, 2).toUpperCase()}
-              <span className="direct-chat-status-dot" title="Onlayn" />
+              <span className="direct-chat-status-dot" title={t("chat_online")} />
             </div>
             <div>
               <h3>{displayHostName}</h3>
@@ -131,7 +134,7 @@ export function DirectChatDrawer({ chatId, spaceTitle, hostName, onClose }) {
             </div>
           </div>
 
-          <button type="button" className="direct-chat-close-btn" onClick={handleClose} aria-label="Yopish">
+          <button type="button" className="direct-chat-close-btn" onClick={handleClose} aria-label={t("cab_close")}>
             ✕
           </button>
         </div>
@@ -153,7 +156,7 @@ export function DirectChatDrawer({ chatId, spaceTitle, hostName, onClose }) {
         <div className="direct-chat-composer">
           <input
             type="text"
-            placeholder="Xabar yozing..."
+            placeholder={t("msg_placeholder")}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}

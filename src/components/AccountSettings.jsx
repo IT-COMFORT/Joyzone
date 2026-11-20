@@ -1,99 +1,108 @@
 import React, { useEffect, useMemo, useState } from "react";
-import logoImage from "../assets/img/Logo.png";
-import { SimpleFooter } from "./ListingsSection.jsx";
+import { useText } from "../context/LanguageContext.jsx";
+import { defaultContent } from "../data/defaultContent.js";
 import api, { getApiErrorMessage } from "../api/client.js";
 import { cacheProfile, normalizeProfile, profileToUserState, splitFullName } from "../utils/profileMapper.js";
 import { readJsonStorage, STORAGE_KEYS, writeJsonStorage } from "../utils/storageKeys.js";
 import "./AccountSettings.css";
 
 // Shown only to partners: the public profile from the "Top agentlar" block.
-const companySection = {
-  id: "company",
-  title: "Профиль компании",
-  description: "Так вас видят клиенты в блоке партнёров на главной и на вашей странице.",
-  items: [
-    { key: "companyName", title: "Название компании", value: "", empty: "Не указано", action: "Редактировать", type: "text" },
-    { key: "partnerBio", title: "Описание", value: "", empty: "Не указано", action: "Редактировать", type: "textarea", note: "Коротко: какие пространства вы предлагаете." },
-  ],
-};
+function buildCompanySection(t) {
+  return {
+    id: "company",
+    title: t("set_company_title"),
+    description: t("set_company_text"),
+    items: [
+      { key: "companyName", title: t("set_company_name"), empty: t("set_not_set"), action: t("set_action_edit"), type: "text" },
+      { key: "partnerBio", title: t("set_company_bio"), empty: t("set_not_set"), action: t("set_action_edit"), type: "textarea", note: t("set_company_bio_note") },
+    ],
+  };
+}
 
-const settingsSections = [
-  {
-    id: "personal",
-    title: "Личная информация",
-    description: "Данные профиля и контакты для бронирований.",
-    items: [
-      { key: "legalName", title: "Имя по документам", value: "Aziz Karimov", action: "Редактировать", type: "text" },
-      { key: "preferredName", title: "Предпочитаемое имя", value: "", empty: "Нет данных", action: "Добавить", type: "text" },
-      { key: "email", title: "Электронный адрес", value: "a***@mail.com", action: "Редактировать", type: "email" },
-      {
-        key: "phone",
-        title: "Номер телефона",
-        value: "+998 ** *** 45 67",
-        note: "Нужен для связи по подтвержденным бронированиям.",
-        action: "Редактировать",
-        type: "tel"
-      },
-      { key: "identity", title: "Подтверждение личности", value: "Не начато", action: "Начать", type: "text" },
-      { key: "address", title: "Адрес проживания", value: "Toshkent, Uzbekistan", action: "Редактировать", type: "text" }
-    ]
-  },
-  {
-    id: "security",
-    title: "Вход и безопасность",
-    description: "Пароль, вход в аккаунт и защита профиля.",
-    items: [
-      { key: "password", title: "Пароль", value: "Обновлен недавно", action: "Редактировать", type: "password" },
-      { key: "twoFactor", title: "Двухэтапная проверка", value: "Выключено", action: "Включить", type: "text" },
-      { key: "sessions", title: "Активные устройства", value: "2 устройства", action: "Посмотреть", type: "text" }
-    ]
-  },
-  {
-    id: "privacy",
-    title: "Конфиденциальность",
-    description: "Что видно партнерам и как используются ваши данные.",
-    items: [
-      { key: "profileVisibility", title: "Видимость профиля", value: "Видно после заявки", action: "Редактировать", type: "text" },
-      { key: "savedSpaces", title: "Сохраненные места", value: "Только мне", action: "Редактировать", type: "text" }
-    ]
-  },
-  {
-    id: "notifications",
-    title: "Уведомления",
-    description: "Как Joyzone сообщает о заявках, ответах и изменениях.",
-    items: [
-      { key: "bookingAlerts", title: "Заявки и бронирования", value: "Email и Telegram", action: "Редактировать", type: "text" },
-      { key: "marketing", title: "Рекомендации и подборки", value: "Включено", action: "Редактировать", type: "text" }
-    ]
-  },
-  {
-    id: "payments",
-    title: "Платежи",
-    description: "Способы оплаты и документы по бронированиям.",
-    items: [
-      { key: "paymentMethod", title: "Способ оплаты", value: "", empty: "Нет данных", action: "Добавить", type: "text" },
-      { key: "receipts", title: "Закрывающие документы", value: "На email", action: "Редактировать", type: "text" }
-    ]
-  },
-  {
-    id: "language",
-    title: "Язык и валюта",
-    description: "Настройки интерфейса и отображения цен.",
-    items: [
-      { key: "language", title: "Язык", value: "Русский", action: "Редактировать", type: "text" },
-      { key: "currency", title: "Валюта", value: "UZS", action: "Редактировать", type: "text" }
-    ]
-  },
-  {
-    id: "booking",
-    title: "Разрешения на бронирование",
-    description: "Кто может отправлять заявки и какие данные прикладывать.",
-    items: [
-      { key: "companyBooking", title: "Бронирование от компании", value: "Разрешено", action: "Редактировать", type: "text" },
-      { key: "autoShare", title: "Данные для партнера", value: "После отправки заявки", action: "Редактировать", type: "text" }
-    ]
-  }
-];
+function buildSettingsSections(t) {
+  const edit = t("set_action_edit");
+  return [
+    {
+      id: "personal",
+      title: t("set_personal_title"),
+      description: t("set_personal_text"),
+      items: [
+        { key: "legalName", title: t("set_legal_name"), empty: t("set_not_set"), action: edit, type: "text" },
+        { key: "preferredName", title: t("set_preferred_name"), empty: t("set_no_data"), action: t("set_action_add"), type: "text" },
+        { key: "email", title: t("set_email"), empty: t("set_not_set"), action: edit, type: "email" },
+        { key: "phone", title: t("set_phone"), empty: t("set_not_set"), note: t("set_phone_note"), action: edit, type: "tel" },
+        { key: "identity", title: t("set_identity"), value: t("set_identity_value"), action: t("set_action_start"), type: "text" },
+        { key: "address", title: t("set_address"), empty: t("set_not_set"), action: edit, type: "text" },
+      ],
+    },
+    {
+      id: "security",
+      title: t("set_security_title"),
+      description: t("set_security_text"),
+      items: [
+        { key: "password", title: t("set_password"), value: t("set_password_value"), action: edit, type: "password" },
+        { key: "twoFactor", title: t("set_two_factor"), value: t("set_off"), action: t("set_action_enable"), type: "text" },
+        { key: "sessions", title: t("set_sessions"), value: t("set_sessions_value"), action: t("set_action_view"), type: "text" },
+      ],
+    },
+    {
+      id: "privacy",
+      title: t("set_privacy_title"),
+      description: t("set_privacy_text"),
+      items: [
+        { key: "profileVisibility", title: t("set_visibility"), value: t("set_visibility_value"), action: edit, type: "text" },
+        { key: "savedSpaces", title: t("set_saved_spaces"), value: t("set_saved_spaces_value"), action: edit, type: "text" },
+      ],
+    },
+    {
+      id: "notifications",
+      title: t("set_notifications_title"),
+      description: t("set_notifications_text"),
+      items: [
+        { key: "bookingAlerts", title: t("set_booking_alerts"), value: t("set_booking_alerts_value"), action: edit, type: "text" },
+        { key: "marketing", title: t("set_marketing"), value: t("set_on"), action: edit, type: "text" },
+      ],
+    },
+    {
+      id: "payments",
+      title: t("set_payments_title"),
+      description: t("set_payments_text"),
+      items: [
+        { key: "paymentMethod", title: t("set_payment_method"), empty: t("set_no_data"), action: t("set_action_add"), type: "text" },
+        { key: "receipts", title: t("set_receipts"), value: t("set_receipts_value"), action: edit, type: "text" },
+      ],
+    },
+    {
+      id: "language",
+      title: t("set_language_title"),
+      description: t("set_language_text"),
+      items: [
+        { key: "language", title: t("set_language"), value: t("set_language_value"), action: edit, type: "text" },
+        { key: "currency", title: t("set_currency"), value: "UZS", action: edit, type: "text" },
+      ],
+    },
+    {
+      id: "booking",
+      title: t("set_booking_title"),
+      description: t("set_booking_text"),
+      items: [
+        { key: "companyBooking", title: t("set_company_booking"), value: t("set_company_booking_value"), action: edit, type: "text" },
+        { key: "autoShare", title: t("set_auto_share"), value: t("set_auto_share_value"), action: edit, type: "text" },
+      ],
+    },
+  ];
+}
+
+// Older builds stored the untouched default of every row; those must not stick
+// to one language, so only values the person really typed are kept.
+function isStoredDefault(key, value) {
+  return Object.values(defaultContent).some((texts) => {
+    const translate = (textKey) => texts[textKey];
+    return [buildCompanySection(translate), ...buildSettingsSections(translate)]
+      .flatMap((section) => section.items)
+      .some((item) => item.key === key && item.value === value);
+  });
+}
 
 function SettingsIcon({ type }) {
   const paths = {
@@ -137,21 +146,15 @@ function profileValues(data, normalized) {
 }
 
 function AccountSettings({ userState, setUserState }) {
-  const sections = useMemo(
-    () => (userState?.isPartner ? [companySection, ...settingsSections] : settingsSections),
-    [userState?.isPartner]
-  );
+  const { t, lang } = useText();
+  const sections = useMemo(() => {
+    const settingsSections = buildSettingsSections(t);
+    return userState?.isPartner ? [buildCompanySection(t), ...settingsSections] : settingsSections;
+  }, [userState?.isPartner, t]);
   const [activeSectionId, setActiveSectionId] = useState("personal");
   const [editingKey, setEditingKey] = useState("");
-  const [values, setValues] = useState(() => {
-    const initial = {};
-    [companySection, ...settingsSections].forEach((section) => {
-      section.items.forEach((item) => {
-        initial[item.key] = item.value;
-      });
-    });
-    return initial;
-  });
+  // Only real values live here; an untouched row shows its translated default.
+  const [values, setValues] = useState({});
   const [draftValue, setDraftValue] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -171,14 +174,17 @@ function AccountSettings({ userState, setUserState }) {
         const response = await api.get("/api/auth/profile/");
         if (!active) return;
         const normalized = normalizeProfile(response.data);
-        const localValues = readJsonStorage(STORAGE_KEYS.profile.localAccountSettings, {});
+        const localValues = Object.fromEntries(
+          Object.entries(readJsonStorage(STORAGE_KEYS.profile.localAccountSettings, {}))
+            .filter(([key, value]) => !isStoredDefault(key, value))
+        );
         setValues((current) => ({
           ...current,
           ...localValues,
           ...profileValues(response.data, normalized),
         }));
       } catch (requestError) {
-        if (active) setError(getApiErrorMessage(requestError, "Не удалось загрузить профиль"));
+        if (active) setError(getApiErrorMessage(requestError, t("set_err_load"), lang));
       } finally {
         if (active) setLoading(false);
       }
@@ -189,7 +195,7 @@ function AccountSettings({ userState, setUserState }) {
 
   const startEditing = (item) => {
     setEditingKey(item.key);
-    setDraftValue(values[item.key] || "");
+    setDraftValue(values[item.key] || item.value || "");
   };
 
   const cancelEditing = () => {
@@ -223,27 +229,19 @@ function AccountSettings({ userState, setUserState }) {
         writeJsonStorage(STORAGE_KEYS.profile.localAccountSettings, localOnly);
         setValues(nextValues);
       }
-      setSuccess(BACKEND_PROFILE_KEYS.has(editingKey) ? "Профиль сохранён" : "Сохранено только на этом устройстве");
+      setSuccess(BACKEND_PROFILE_KEYS.has(editingKey) ? t("set_saved") : t("set_saved_local"));
       cancelEditing();
     } catch (requestError) {
-      setError(getApiErrorMessage(requestError, "Не удалось сохранить изменения"));
+      setError(getApiErrorMessage(requestError, t("set_err_save"), lang));
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <main className="account-settings-page">
-      <header className="settings-topbar">
-        <a href="/" aria-label="Joyzone home">
-          <img src={logoImage} alt="Joyzone" />
-        </a>
-        <a className="settings-done" href="/profile">Готово</a>
-      </header>
-
-      <section className="settings-shell">
-        <aside className="settings-sidebar" aria-label="Настройки аккаунта">
-          <h1>Настройки аккаунта</h1>
+    <section className="settings-shell">
+        <aside className="settings-sidebar" aria-label={t("set_title")}>
+          <h1>{t("set_title")}</h1>
           <div className="settings-nav-list">
             {sections.map((section) => (
               <button
@@ -265,10 +263,10 @@ function AccountSettings({ userState, setUserState }) {
 
         <section className="settings-content">
           <div className="settings-content-head">
-            <span>Joyzone account</span>
+            <span>{t("set_kicker")}</span>
             <h2>{activeSection.title}</h2>
             <p>{activeSection.description}</p>
-            {loading ? <p role="status">Загрузка профиля...</p> : null}
+            {loading ? <p role="status">{t("set_loading")}</p> : null}
             {error ? <p role="alert" style={{ color: "#b91c1c" }}>{error}</p> : null}
             {success ? <p role="status" style={{ color: "#15803d" }}>{success}</p> : null}
           </div>
@@ -276,15 +274,15 @@ function AccountSettings({ userState, setUserState }) {
           <div className="settings-row-list">
             {activeSection.items.map((item) => {
               const isEditing = editingKey === item.key;
-              const value = values[item.key];
+              const value = values[item.key] || item.value;
 
               return (
                 <article className={`settings-row ${isEditing ? "is-editing" : ""}`} key={item.key}>
                   <div className="settings-row-copy">
                     <h3>{item.title}</h3>
                     {item.note ? <p>{item.note}</p> : null}
-                    {!BACKEND_PROFILE_KEYS.has(item.key) ? <p>Локальная настройка: пока не синхронизируется с сервером.</p> : null}
-                    <strong className={!value ? "is-empty" : ""}>{value || item.empty || "Нет данных"}</strong>
+                    {!BACKEND_PROFILE_KEYS.has(item.key) ? <p>{t("set_local_note")}</p> : null}
+                    <strong className={!value ? "is-empty" : ""}>{value || item.empty || t("set_no_data")}</strong>
                   </div>
 
                   {isEditing ? (
@@ -306,9 +304,9 @@ function AccountSettings({ userState, setUserState }) {
                       )}
                       <div>
                         <button type="button" className="settings-save" onClick={saveEditing} disabled={saving}>
-                          {saving ? "Сохранение..." : "Сохранить"}
+                          {saving ? t("cab_saving") : t("cab_save")}
                         </button>
-                        <button type="button" className="settings-cancel" onClick={cancelEditing}>Отмена</button>
+                        <button type="button" className="settings-cancel" onClick={cancelEditing}>{t("cab_cancel")}</button>
                       </div>
                     </div>
                   ) : (
@@ -321,9 +319,7 @@ function AccountSettings({ userState, setUserState }) {
             })}
           </div>
         </section>
-      </section>
-      <SimpleFooter />
-    </main>
+    </section>
   );
 }
 

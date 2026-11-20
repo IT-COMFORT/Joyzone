@@ -43,6 +43,15 @@ export default function JoySlider({ items, interval = 4200, navigation = false }
 
   const count = items.length;
 
+  // Banners from the API can replace the bundled ones while the slider runs;
+  // with fewer slides the old index would point at nothing.
+  useEffect(() => {
+    if (count && activeRef.current >= count) {
+      activeRef.current = 0;
+      setActive(0);
+    }
+  }, [count]);
+
   const goTo = (nextIndex, { fromUser = false } = {}) => {
     const now = performance.now();
     if (fromUser && now < busyUntilRef.current) return;
@@ -57,6 +66,7 @@ export default function JoySlider({ items, interval = 4200, navigation = false }
     const root = rootRef.current;
     const canvas = canvasRef.current;
     const panes = gsap.utils.toArray(root.querySelectorAll(".slider-pane"));
+    if (!panes[active]) return undefined;
     const photos = gsap.utils.toArray(root.querySelectorAll(".slider-photo"));
     const glass = root.querySelector(".slider-glass");
     const progressBars = gsap.utils.toArray(root.querySelectorAll(".slider-dot span"));
@@ -116,7 +126,16 @@ export default function JoySlider({ items, interval = 4200, navigation = false }
     });
     timerRef.current = window.setTimeout(() => goTo(active + 1), interval);
 
+    // If the entrance never finishes (route change mid-animation, or the tab
+    // was in the background so animation frames stopped), show the slide anyway.
+    const safety = window.setTimeout(() => {
+      if (Number(getComputedStyle(panes[active]).opacity) < 0.99) {
+        gsap.set(panes[active], { opacity: 1, scale: 1, filter: "none" });
+      }
+    }, 1400);
+
     return () => {
+      window.clearTimeout(safety);
       timeline.kill();
       window.clearTimeout(timerRef.current);
       progressRef.current?.kill();
@@ -131,7 +150,7 @@ export default function JoySlider({ items, interval = 4200, navigation = false }
       aria-label="Joyzone property preview slider"
     >
       {items.map((item, index) => (
-        <article key={item.title} className={`slider-pane ${index === active ? "is-active" : ""}`} aria-hidden={index !== active}>
+        <article key={item.id ?? index} className={`slider-pane ${index === active ? "is-active" : ""}`} aria-hidden={index !== active}>
           <div key="photo" className="slider-photo" style={{ backgroundImage: `url("${item.image}")` }} />
         </article>
       ))}
@@ -140,7 +159,7 @@ export default function JoySlider({ items, interval = 4200, navigation = false }
       <div className="slider-dots" role="tablist" aria-label="Slider navigation">
         {items.map((item, index) => (
           <button
-            key={item.title}
+            key={item.id ?? index}
             type="button"
             className="slider-dot"
             aria-label={`${index + 1}: ${item.eyebrow}`}

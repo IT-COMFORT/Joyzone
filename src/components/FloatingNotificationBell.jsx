@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { PackIcon } from "./ui/iconPack.jsx";
 import { createPortal } from "react-dom";
+import { useText } from "../context/LanguageContext.jsx";
+import { formatDayTime } from "../utils/localeDate.js";
 import gsap from "gsap";
-import { chatPartnerName, getStoredChats } from "../utils/chatManager.js";
+import { CHAT_EMPTY_PREVIEW, chatPartnerName, getStoredChats } from "../utils/chatManager.js";
 import {
   canUseBackendNotifications,
   fetchNotifications,
@@ -14,21 +16,18 @@ import {
 import "./FloatingNotificationBell.css";
 import { useVisiblePolling } from "../utils/polling.js";
 
-function typeLabel(type) {
-  const labels = {
-    place_approved: "Модерация",
-    place_rejected: "Модерация",
-    place_submitted: "Новая заявка",
-    booking_created: "Бронирование",
-    booking_paid: "Оплата",
-    booking_confirmed: "Подтверждение",
-    booking_cancelled: "Отмена",
-    booking_blocked: "Календарь",
-    tariff_activated: "Тариф",
-    system: "Система"
-  };
-  return labels[type] || "Уведомление";
-}
+const TYPE_LABELS = {
+  place_approved: "bell_type_moderation",
+  place_rejected: "bell_type_moderation",
+  place_submitted: "bell_type_submitted",
+  booking_created: "bell_type_booking",
+  booking_paid: "bell_type_paid",
+  booking_confirmed: "bell_type_confirmed",
+  booking_cancelled: "bell_type_cancelled",
+  booking_blocked: "bell_type_blocked",
+  tariff_activated: "bell_type_tariff",
+  system: "bell_type_system",
+};
 
 // Icon and colour tone per notification type.
 const TYPE_LOOK = {
@@ -63,6 +62,7 @@ function useContainWheel(ref, active) {
 }
 
 export function FloatingNotificationBell({ onOpenChat }) {
+  const { t, lang } = useText();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [chats, setChats] = useState(() => getStoredChats());
@@ -95,7 +95,7 @@ export function FloatingNotificationBell({ onOpenChat }) {
       console.warn("Failed to load backend notifications:", err);
       setNotifications([]);
       setUnreadCount(0);
-      setNotificationError("Не удалось загрузить системные уведомления.");
+      setNotificationError("bell_err_load");
     } finally {
       setLoading(false);
     }
@@ -173,7 +173,7 @@ export function FloatingNotificationBell({ onOpenChat }) {
       setUnreadCount((current) => Math.max(0, current - 1));
       await markNotificationRead(notification.id).catch((err) => {
         console.warn("Failed to mark notification as read:", err);
-        setNotificationError("Не удалось отметить уведомление прочитанным.");
+        setNotificationError("bell_err_read");
         refreshNotifications();
       });
     }
@@ -187,7 +187,7 @@ export function FloatingNotificationBell({ onOpenChat }) {
     setUnreadCount(0);
     await markAllNotificationsRead().catch((err) => {
       console.warn("Failed to mark all notifications as read:", err);
-      setNotificationError("Не удалось отметить уведомления прочитанными.");
+      setNotificationError("bell_err_read");
       refreshNotifications();
     });
   };
@@ -201,8 +201,8 @@ export function FloatingNotificationBell({ onOpenChat }) {
         data-testid="notification-bell"
         className={`fnb-bell-btn ${unreadCount > 0 ? "has-unread" : ""}`}
         onClick={() => setIsOpen(!isOpen)}
-        aria-label="Уведомления"
-        title="Уведомления"
+        aria-label={t("bell_title")}
+        title={t("bell_title")}
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -214,27 +214,27 @@ export function FloatingNotificationBell({ onOpenChat }) {
       {isOpen && (
         <div className="fnb-dropdown" ref={dropdownRef}>
           <div className="fnb-dropdown-header">
-            <h3>Уведомления</h3>
-            <span className="fnb-unread-tag">{unreadCount} новых</span>
+            <h3>{t("bell_title")}</h3>
+            <span className="fnb-unread-tag">{t("bell_new", { n: unreadCount })}</span>
           </div>
 
           <div className="fnb-actions-row">
-            <span>Системные уведомления</span>
+            <span>{t("bell_system")}</span>
             <button type="button" onClick={handleReadAll} disabled={unreadCount === 0}>
-              Прочитать все
+              {t("bell_read_all")}
             </button>
           </div>
 
           <div className="fnb-notifications-list">
             {notificationError ? (
               <div className="fnb-empty">
-                <div>{notificationError}</div>
-                <button type="button" className="fnb-retry-btn" onClick={refreshNotifications}>Повторить</button>
+                <div>{t(notificationError)}</div>
+                <button type="button" className="fnb-retry-btn" onClick={refreshNotifications}>{t("cab_retry")}</button>
               </div>
             ) : loading && notifications.length === 0 ? (
-              <div className="fnb-empty">Загрузка...</div>
+              <div className="fnb-empty">{t("cab_loading")}</div>
             ) : notifications.length === 0 ? (
-              <div className="fnb-empty">Новых системных уведомлений нет</div>
+              <div className="fnb-empty">{t("bell_empty")}</div>
             ) : (
               notifications.map((notification) => (
                 <button
@@ -249,13 +249,13 @@ export function FloatingNotificationBell({ onOpenChat }) {
                   </span>
                   <span className="fnb-item-info">
                     <span className="fnb-item-top">
-                      <small>{typeLabel(notification.type)}</small>
-                      <time>{notification.time}</time>
+                      <small>{t(TYPE_LABELS[notification.type] || "bell_type_default")}</small>
+                      <time>{notification.created_at ? formatDayTime(new Date(notification.created_at), lang) : t("cab_now")}</time>
                     </span>
-                    <strong>{notification.title}</strong>
-                    {notification.message ? <p>{notification.message}</p> : null}
+                    <strong>{notification[`title_${lang}`] || notification.title}</strong>
+                    {notification[`message_${lang}`] || notification.message ? <p>{notification[`message_${lang}`] || notification.message}</p> : null}
                   </span>
-                  {notification.isRead ? null : <i className="fnb-dot" aria-label="Новое" />}
+                  {notification.isRead ? null : <i className="fnb-dot" aria-label={t("bell_new_dot")} />}
                 </button>
               ))
             )}
@@ -263,12 +263,12 @@ export function FloatingNotificationBell({ onOpenChat }) {
 
           <div className="fnb-chat-section">
             <div className="fnb-actions-row">
-              <span>Сообщения чата</span>
-              <small>{unreadChats.length} новых</small>
+              <span>{t("bell_chats")}</span>
+              <small>{t("bell_new", { n: unreadChats.length })}</small>
             </div>
             <div className="fnb-notifications-list">
               {unreadChats.length === 0 ? (
-                <div className="fnb-empty">Новых сообщений нет</div>
+                <div className="fnb-empty">{t("bell_no_chats")}</div>
               ) : (
                 unreadChats.map((chat) => {
                   const lastMsg = chat.messages?.[chat.messages.length - 1];
@@ -287,13 +287,13 @@ export function FloatingNotificationBell({ onOpenChat }) {
                       </span>
                       <span className="fnb-item-info">
                         <span className="fnb-item-top">
-                          <small>Чат</small>
-                          <time>{chat.time || "Hozir"}</time>
+                          <small>{t("bell_chat")}</small>
+                          <time>{chat.time || t("cab_now")}</time>
                         </span>
                         <strong>{chatPartnerName(chat)}</strong>
-                        <p>{lastMsg?.text || chat.preview || "Chat ochilgan"}</p>
+                        <p>{lastMsg?.text || (chat.preview && chat.preview !== CHAT_EMPTY_PREVIEW ? chat.preview : t("chat_started"))}</p>
                       </span>
-                      <i className="fnb-dot" aria-label="Новое" />
+                      <i className="fnb-dot" aria-label={t("bell_new_dot")} />
                     </button>
                   );
                 })

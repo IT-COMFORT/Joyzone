@@ -3,6 +3,17 @@
   top: 78px !important;
   right: 24px !important;
   z-index: 9999998 !important;
+  /* Comes back softly after the burger menu has closed. */
+  transition: opacity 0.28s ease 0.22s, transform 0.28s ease 0.22s, visibility 0s linear 0.22s;
+}
+
+/* The bell sits above the open burger menu, so it hides while the menu is open. */
+body.is-menu-open .fnb-container {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: scale(0.85);
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s linear 0.18s;
 }
 
 .fnb-bell-btn {

@@ -1,0 +1,161 @@
+/* ===== Profile tab: header card ("pf") ===== */
+
+.pf-hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 20px;
+  padding: 24px;
+  border: 1px solid rgba(41, 74, 109, 0.12);
+  border-radius: 24px;
+  background: #ffffff;
+}
+
+.pf-hero-avatar {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: #294a6d center / cover no-repeat;
+  color: #ffffff;
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.pf-hero-text { min-width: 0; }
+
+.pf-hero-text > span {
+  color: rgba(18, 40, 63, 0.55);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.pf-hero-text h1 {
+  margin: 2px 0 0;
+  color: #12283f;
+  font-size: clamp(24px, 2.6vw, 32px);
+  font-weight: 800;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.pf-hero-text p {
+  margin: 4px 0 0;
+  color: rgba(18, 40, 63, 0.7);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.pf-hero-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 999px;
+  background: #294a6d;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 160ms ease;
+}
+
+.pf-hero-edit:hover { background: #1f3a57; }
+
+/* Completion: one place on the page that says how full the profile is. */
+.pf-hero-progress {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 220px) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: #fdf3ee;
+  color: #12283f;
+  text-decoration: none;
+  transition: background 160ms ease;
+}
+
+.pf-hero-progress:hover { background: #fbe8de; }
+
+.pf-hero-progress-text { min-width: 0; }
+
+.pf-hero-progress-text strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.pf-hero-progress-text span {
+  display: block;
+  margin-top: 2px;
+  color: rgba(18, 40, 63, 0.62);
+  font-size: 13px;
+}
+
+.pf-hero-track {
+  display: block;
+  overflow: hidden;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(228, 102, 48, 0.18);
+}
+
+.pf-hero-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #e46630;
+}
+
+.pf-hero-fill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #e46630;
+  font-size: 14px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.pf-block { margin-top: 28px; }
+
+.pf-block-title {
+  margin: 0 0 14px;
+  color: #12283f;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.pf-hero a:focus-visible {
+  outline: 3px solid rgba(228, 102, 48, 0.55);
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .pf-hero {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 14px;
+    padding: 18px;
+  }
+
+  .pf-hero-avatar { width: 64px; height: 64px; font-size: 20px; }
+
+  .pf-hero-edit {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+
+  .pf-hero-progress {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px 14px;
+    padding: 14px;
+  }
+
+  .pf-hero-progress-text span { display: none; }
+  .pf-hero-track { grid-column: 1 / -1; grid-row: 2; }
+}

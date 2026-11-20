@@ -1,17 +1,17 @@
 import { defaultLists } from "./defaultLists.js";
 import { siteTexts } from "./siteTexts.js";
+import { cabinetTexts } from "./cabinetTexts.js";
 
 const baseContent = {
   uz: {
     nav_links_arr: [
       { label: "Bosh sahifa", href: "/" },
-      { label: "Biz haqimizda", href: "/about-us" },
       { label: "Katalog", href: "/filter" },
-      { label: "FAQ", href: "#faq" },
-      { label: "Kontaktlar", href: "#contact" }
+      { label: "E'lon joylash qo'llanmasi", href: "/partner-guide" },
+      { label: "Sotuvda", href: "/filter?deal_type=sale" }
     ],
     nav_login: "Kirish",
-    nav_profile: "Kabinet",
+    nav_profile: "Profil",
 
     hero_title: "O'zbekiston bo'ylab\nqulay",
     hero_subtitle: "Ofis, do'kon va omborlarni ijaraga oling yoki sotib oling.",
@@ -41,7 +41,7 @@ const baseContent = {
     faq_title: "Ko'p beriladigan savollar",
 
     
-    auth_login_title: "Hush kelibsiz!",
+    auth_login_title: "Xush kelibsiz!",
     auth_login_sub: "Telefon raqamingizni kiriting — unga tasdiqlash kodini yuboramiz.",
     auth_reg_title: "Ro'yxatdan o'tish",
     auth_reg_sub: "Joyzone platformasida ishlash uchun akkaunt yarating.",
@@ -60,17 +60,17 @@ const baseContent = {
     about_text: "Har kim uchun oddiy va qulay platforma",
     about_page_kicker: "Joyzone haqida",
     about_page_title: "Joy topishni oson qilamiz.",
-    about_page_text: "Joyzone ofis, kovorking, zal, do'kon, noturar joy va omborlarni bitta platformada jamlaydi. Ularni ijaraga olish yoki sotib olish mumkin. Mijoz kerakli joyni tez topadi, egasi esa uni ishonchli ko'rinishda taqdim etadi.",
+    about_page_text: "Joyzone ofis, kovorking, zal, do'kon, noturar bino va omborlarni bitta platformada jamlaydi. Ularni ijaraga olish yoki sotib olish mumkin. Mijoz kerakli joyni tez topadi, joy egasi esa uni ishonchli tarzda taqdim etadi.",
     about_story_kicker: "Nima uchun kerak",
-    about_story_title: "Ko'p joy bor, lekin tanlash doim ham oson emas.",
-    about_story_text: "Maqsadimiz oddiy: joy haqidagi asosiy savollarga birinchi ekranda javob berish. Manzil, maydon, narx va rasmlar tartibli karta, filtr va egasining profili orqali ko'rsatiladi.",
-    partner_guide_kicker: "Partner instruktsiyasi",
-    partner_guide_title: "Joyzone partner qo'llanmasi.",
-    partner_guide_text: "Hamkor bo'lish jarayoni qisqa va nazoratli. Quyida ariza, karta tayyorlash, shartlar, moderatsiya va bron so'rovlari tartibi keltirilgan.",
-    partner_terms_title: "Hamkor bo'lish uchun asosiy qoidalar.",
-    partner_terms_text: "Bu blok kelishuvning qisqa ko'rinishi. Yakuniy shartlar alohida hujjat yoki forma orqali tasdiqlanishi mumkin.",
+    about_story_title: "Joy ko'p, lekin tanlash har doim ham oson emas.",
+    about_story_text: "Maqsadimiz oddiy: joy haqidagi asosiy savollarga birinchi ekrandayoq javob berish. Manzil, maydon, narx va rasmlar tartibli e'lon, qulay saralash va joy egasining profili orqali ko'rsatiladi.",
+    partner_guide_kicker: "E'lon beruvchilar uchun qo'llanma",
+    partner_guide_title: "E'lon qo'ymoqchimisiz? Mana qo'llanma.",
+    partner_guide_text: "E'lon joylashtirish oson va tushunarli. Quyida ariza berish, e'lon tayyorlash, shartlar, moderatsiya va bron so'rovlari bilan ishlash tartibi keltirilgan.",
+    partner_terms_title: "E'lon beruvchilar uchun asosiy qoidalar.",
+    partner_terms_text: "Bu yerda kelishuvning qisqacha mazmuni berilgan. Yakuniy shartlar alohida hujjat orqali tasdiqlanadi.",
     tariffs_title: "O'zingizga mos tarifni tanlang",
-    tariffs_subtitle: "Bepul boshlang va biznes o'sishi bilan tarifni o'zgartiring.",
+    tariffs_subtitle: "Bepul boshlang, biznesingiz o'sgani sari tarifni o'zgartiring.",
     
     footer_about: "Joyzone — O'zbekistonda tijorat joylarini ijaraga olish va sotib olish uchun platforma.",
     footer_phone: "+998 77 044 40 00",
@@ -80,30 +80,28 @@ const baseContent = {
     footer_link_dirs: "Yo'nalishlar",
     footer_link_contact: "Kontaktlar",
     footer_col1_links: [
-      { label: "Biz haqimizda", href: "/about-us" },
       { label: "Katalog", href: "/filter" },
       { label: "Savol-javob", href: "/#faq" },
-      { label: "Hamkorlik shartlari", href: "/partner-guide" }
+      { label: "E'lon joylashtirish shartlari", href: "/partner-guide" }
     ],
     footer_col2_links: [
       { label: "Ofislar", href: "/filter?category=ofis" },
       { label: "Kovorking", href: "/filter?category=kovorking" },
       { label: "Savdo maydonlari", href: "/filter?category=savdo" },
       { label: "Omborlar", href: "/filter?category=ombor" },
-      { label: "Hamkor bo'lish", href: "/partner-guide#become" }
+      { label: "E'lon joylashtirish", href: "/partner-guide#become" }
     ],
     
   },
   ru: {
     nav_links_arr: [
       { label: "Главная", href: "/" },
-      { label: "О нас", href: "/about-us" },
       { label: "Каталог", href: "/filter" },
-      { label: "FAQ", href: "#faq" },
-      { label: "Контакты", href: "#contact" }
+      { label: "Гид по размещению", href: "/partner-guide" },
+      { label: "Продажа", href: "/filter?deal_type=sale" }
     ],
     nav_login: "Войти",
-    nav_profile: "Кабинет",
+    nav_profile: "Профиль",
 
     hero_title: "По всему Узбекистану —\nудобные",
     hero_subtitle: "Офисы, магазины и склады — в аренду и на продажу.",
@@ -172,7 +170,6 @@ const baseContent = {
     footer_link_dirs: "Направления",
     footer_link_contact: "Контакты",
     footer_col1_links: [
-      { label: "О нас", href: "/about-us" },
       { label: "Каталог", href: "/filter" },
       { label: "Вопросы и ответы", href: "/#faq" },
       { label: "Условия партнёрства", href: "/partner-guide" }
@@ -189,10 +186,9 @@ const baseContent = {
   en: {
     nav_links_arr: [
       { label: "Home", href: "/" },
-      { label: "About Us", href: "/about-us" },
       { label: "Catalog", href: "/filter" },
-      { label: "FAQ", href: "#faq" },
-      { label: "Contacts", href: "#contact" }
+      { label: "Listing guide", href: "/partner-guide" },
+      { label: "For sale", href: "/filter?deal_type=sale" }
     ],
     nav_login: "Log In",
     nav_profile: "Profile",
@@ -264,7 +260,6 @@ const baseContent = {
     footer_link_dirs: "Categories",
     footer_link_contact: "Contact",
     footer_col1_links: [
-      { label: "About us", href: "/about-us" },
       { label: "Catalog", href: "/filter" },
       { label: "FAQ", href: "/#faq" },
       { label: "Partner terms", href: "/partner-guide" }
@@ -281,5 +276,5 @@ const baseContent = {
 };
 
 export const defaultContent = Object.fromEntries(
-  Object.entries(baseContent).map(([lang, values]) => [lang, { ...values, ...siteTexts[lang], ...defaultLists[lang] }]),
+  Object.entries(baseContent).map(([lang, values]) => [lang, { ...values, ...siteTexts[lang], ...cabinetTexts[lang], ...defaultLists[lang] }]),
 );

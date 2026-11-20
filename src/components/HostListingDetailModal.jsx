@@ -1,12 +1,26 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import gsap from "gsap";
+import api from "../api/client.js";
+import { useText } from "../context/LanguageContext.jsx";
 import "./HostListingDetailModal.css";
 
 export function HostListingDetailModal({ item, onClose, onEdit }) {
   const overlayRef = useRef(null);
   const cardRef = useRef(null);
   const [activeImgIndex, setActiveImgIndex] = useState(0);
+  const { t, lang } = useText();
+  const [parameters, setParameters] = useState([]);
+
+  // Places store amenities as slugs; their names come from the parameters list.
+  useEffect(() => {
+    let alive = true;
+    api.get("/api/parameters/", { skipAuth: true })
+      .then((response) => { if (alive) setParameters(response.data?.results || response.data || []); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  const amenityNames = Object.fromEntries(parameters.map((item) => [item.slug, item[`name_${lang}`] || item.name_ru]));
 
   useEffect(() => {
     if (!item) return;
@@ -47,6 +61,7 @@ export function HostListingDetailModal({ item, onClose, onEdit }) {
 
   if (!item) return null;
 
+  const amenities = Array.isArray(item.amenities) ? item.amenities : [];
   const rawImages = item.images && item.images.length > 0 ? item.images : (item.image ? [item.image] : []);
   const images = rawImages.length > 0 ? rawImages : [
     "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80"
@@ -59,11 +74,11 @@ export function HostListingDetailModal({ item, onClose, onEdit }) {
         {/* Header bar */}
         <div className="host-detail-modal-header">
           <div className="host-detail-title-group">
-            <span className="host-detail-category">{item.category || "Joyzone Space"}</span>
+            <span className="host-detail-category">{item.subcategory_info?.[`name_${lang}`] || t("detail_space")}</span>
             <h2>{item.title}</h2>
-            <span className="host-detail-location">{item.location || item.city || "Toshkent"}</span>
+            <span className="host-detail-location">{item.location || item.city || ""}</span>
           </div>
-          <button type="button" className="host-detail-close-btn" onClick={handleClose} aria-label="Yopish">
+          <button type="button" className="host-detail-close-btn" onClick={handleClose} aria-label={t("cab_close")}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -76,7 +91,7 @@ export function HostListingDetailModal({ item, onClose, onEdit }) {
           <div className="host-detail-main-img-wrap">
             <img src={images[activeImgIndex]} alt={item.title} className="host-detail-main-img" />
             <span className={`host-detail-status-pill ${item.status === "approved" ? "is-live" : item.status === "rejected" ? "is-rejected" : "is-pending"}`}>
-              {item.status === "approved" ? "Опубликовано" : item.status === "rejected" ? "Отклонено" : "На модерации"}
+              {t(item.status === "approved" ? "place_status_approved" : item.status === "rejected" ? "place_status_rejected" : "place_status_pending")}
             </span>
           </div>
 
@@ -101,76 +116,40 @@ export function HostListingDetailModal({ item, onClose, onEdit }) {
           {/* Key Metrics grid */}
           <div className="host-detail-metrics-grid">
             <div className="host-metric-card">
-              <small>Narxi</small>
-              <strong>{item.price || "150,000 UZS"}</strong>
+              <small>{t("detail_price")}</small>
+              <strong>{item.price || "—"}</strong>
             </div>
             <div className="host-metric-card">
-              <small>Sig'imi</small>
-              <strong>{item.capacity || "10-20 kishi"}</strong>
+              <small>{t("detail_capacity")}</small>
+              <strong>{item.capacity || item.people || "—"}</strong>
             </div>
             <div className="host-metric-card">
-              <small>Bandlik davri</small>
-              <strong>{item.occupancy || "75%"}</strong>
+              <small>{t("detail_occupancy")}</small>
+              <strong>{item.occupancy || "0%"}</strong>
             </div>
             <div className="host-metric-card">
-              <small>Jami bandliklar</small>
-              <strong>{item.bookings_count || 0} ta</strong>
+              <small>{t("detail_bookings")}</small>
+              <strong>{item.bookings_count || 0}</strong>
             </div>
           </div>
 
-          {/* Booking Financial & Duration Receipt Breakdown */}
-          <div className="host-detail-financial-receipt">
-            <div className="host-receipt-header">
-              <div>
-                <h4>To'lov va bandlik tafsilotlari</h4>
-                <small>Tranzaksiya va kunlar hisobi</small>
-              </div>
-              <span className="host-receipt-badge">To'langan</span>
+          {item.description ? (
+            <div className="host-detail-desc-block">
+              <h3>{t("detail_about")}</h3>
+              <p>{item.description}</p>
             </div>
+          ) : null}
 
-            <div className="host-receipt-body">
-              <div className="host-receipt-row highlight">
-                <span>To'langan summa:</span>
-                <strong>{item.paidAmount || item.totalPrice || item.price || "450,000 UZS"}</strong>
-              </div>
-              <div className="host-receipt-row">
-                <span>Band qilingan muddat (Kun / Soat):</span>
-                <strong>{item.duration || "3 kun (24 soat)"}</strong>
-              </div>
-              <div className="host-receipt-row">
-                <span>Bandlik sanasi va vaqti:</span>
-                <strong>{item.bookingDate || "2026-09-10 — 2026-09-13 (10:00 - 18:00)"}</strong>
-              </div>
-              <div className="host-receipt-row">
-                <span>To'lov usuli:</span>
-                <strong>{item.paymentMethod || "Karta (Uzcard / Humo)"}</strong>
-              </div>
-              <div className="host-receipt-row">
-                <span>Mehmonlar soni:</span>
-                <strong>{item.guestsCount || item.capacity || "4 kishi"}</strong>
-              </div>
-              <div className="host-receipt-row">
-                <span>Buyurtma chek kodi:</span>
-                <code className="host-receipt-code">{item.bookingCode || "#JZ-92841"}</code>
+          {amenities.length ? (
+            <div className="host-detail-amenities-block">
+              <h3>{t("detail_amenities")}</h3>
+              <div className="host-detail-tags">
+                {amenities.map((amenity) => (
+                  <span key={amenity} className="host-detail-tag">{amenityNames[amenity] || amenity}</span>
+                ))}
               </div>
             </div>
-          </div>
-
-          {/* Description */}
-          <div className="host-detail-desc-block">
-            <h3>Joy haqida ma'lumot</h3>
-            <p>{item.description || "Ushbu joy zamonaviy mebellar, yuqori tezlikdagi Wi-Fi va barcha qulayliklar bilan jihozlangan premium makon."}</p>
-          </div>
-
-          {/* Amenities tags */}
-          <div className="host-detail-amenities-block">
-            <h3>Qulayliklar</h3>
-            <div className="host-detail-tags">
-              {(item.amenities || ["Wi-Fi", "Konditsioner", "Proyektor", "Kofe apparat", "Avtoturargoh"]).map((amenity, idx) => (
-                <span key={idx} className="host-detail-tag">{amenity}</span>
-              ))}
-            </div>
-          </div>
+          ) : null}
         </div>
 
         {/* Footer Actions */}
@@ -180,15 +159,15 @@ export function HostListingDetailModal({ item, onClose, onEdit }) {
             className="host-detail-act-btn space-detail"
             onClick={handleClose}
           >
-            Space details
+            {t("detail_open")}
           </a>
           {onEdit && (
             <button type="button" className="host-detail-act-btn edit" onClick={() => { handleClose(); onEdit(item); }}>
-              Tahrirlash
+              {t("cab_edit")}
             </button>
           )}
           <button type="button" className="host-detail-act-btn close" onClick={handleClose}>
-            Yopish
+            {t("cab_close")}
           </button>
         </div>
 

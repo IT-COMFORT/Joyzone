@@ -7,25 +7,14 @@ import "./AuthScreens.css";
 import { navigate } from "../utils/router.js";
 
 // Tell the user what actually went wrong instead of a generic "error".
-function authErrorText(err, lang, stage) {
-  const ru = lang === "ru";
+function authErrorKey(err, stage) {
   const status = err?.response?.status;
-  if (!err?.response) {
-    return ru ? "Нет связи с сервером. Проверьте интернет и попробуйте снова." : "Server bilan aloqa yo'q. Internetni tekshirib, qaytadan urinib ko'ring.";
-  }
-  if (status === 429) {
-    return ru ? "Слишком много попыток. Подождите минуту и попробуйте снова." : "Juda ko'p urinish. Bir daqiqa kutib, qaytadan urinib ko'ring.";
-  }
-  if (status === 503) {
-    return ru ? "Отправка SMS пока не подключена." : "SMS yuborish hali ulanmagan.";
-  }
-  if (stage === "verify" && status === 400) {
-    return ru ? "Неверный код или срок его действия истёк." : "Noto'g'ri kod yoki muddati o'tgan.";
-  }
-  if (stage === "send" && status === 400) {
-    return getApiErrorMessage(err, ru ? "Проверьте номер телефона." : "Telefon raqamini tekshiring.");
-  }
-  return getApiErrorMessage(err, ru ? "Что-то пошло не так. Попробуйте снова." : "Xatolik yuz berdi. Qaytadan urinib ko'ring.");
+  if (!err?.response) return "auth_err_network";
+  if (status === 429) return "auth_err_limit";
+  if (status === 503) return "auth_err_sms";
+  if (stage === "verify" && status === 400) return "auth_err_code";
+  if (stage === "send" && status === 400) return "auth_err_phone";
+  return "auth_err_generic";
 }
 
 function AuthTitle({ title, accent = "", centered = false, compact = false }) {
@@ -107,14 +96,12 @@ export function AuthForm({ onSuccess }) {
     return { title: text, accent: "" };
   };
 
-  const loginText = parseTitle(db.auth_login_title || (lang === 'uz' ? "Hush kelibsiz!" : "С возвращением!"));
-  const loginSub = db.auth_login_sub || (lang === 'uz' ? "Telefon raqamingiz orqali tizimga kiring yoki ro'yxatdan o'ting." : "Войдите, чтобы управлять бронированиями");
-  
-  const regText = parseTitle(db.auth_reg_title || (lang === 'uz' ? "Ism familiya" : "Создать аккаунт"));
-  const regSub = db.auth_reg_sub || (lang === 'uz' ? "Joyzone xizmatlaridan foydalanish uchun profilingizni to'ldiring." : "Присоединяйтесь к Joyzone за пару минут");
-  
-  const otpText = parseTitle(db.auth_otp_title || (lang === 'uz' ? "Kodni tasdiqlang" : "Введите код"));
-  const otpSub = db.auth_otp_sub || (lang === 'uz' ? "Telegram botimizga yuborilgan 6 xonali tasdiqlash kodini kiriting." : "Мы отправили код на ваш номер");
+  const loginText = parseTitle(db.auth_login_title);
+  const loginSub = db.auth_login_sub;
+  const regText = parseTitle(db.auth_reg_title);
+  const regSub = db.auth_reg_sub;
+  const otpText = parseTitle(db.auth_otp_title);
+  const otpSub = db.auth_otp_sub;
 
   const [step, setStep] = useState("phone"); // phone, otp, profile"
   // The admin content preview opens a step to show where its texts appear.
@@ -210,7 +197,7 @@ export function AuthForm({ onSuccess }) {
       if (devCode.length === 6) setOtp(devCode.split(""));
       setStep("otp");
     } catch (err) {
-      alert(authErrorText(err, lang, "send"));
+      alert(db[authErrorKey(err, "send")]);
     }
   };
 
@@ -267,7 +254,7 @@ export function AuthForm({ onSuccess }) {
         onSuccess(data.profile);
       }
     } catch (err) {
-      alert(authErrorText(err, lang, "verify"));
+      alert(db[authErrorKey(err, "verify")]);
     }
   };
 
@@ -281,7 +268,7 @@ export function AuthForm({ onSuccess }) {
       const data = res.data;
       onSuccess(data);
     } catch (err) {
-      alert(authErrorText(err, lang, "profile"));
+      alert(db[authErrorKey(err, "profile")]);
     }
   };
 
@@ -298,10 +285,7 @@ export function AuthForm({ onSuccess }) {
       beginAuthSession(response.data.access);
       onSuccess(response.data.profile);
     } catch (error) {
-      setDemoError(getApiErrorMessage(
-        error,
-        lang === "uz" ? "Demo kirish amalga oshmadi." : "Не удалось войти в демо.",
-      ));
+      setDemoError(getApiErrorMessage(error, db.auth_err_demo, lang));
     } finally {
       setDemoLoading(false);
     }
@@ -311,20 +295,13 @@ export function AuthForm({ onSuccess }) {
     return (
       <AuthColumn narrow>
         <div className="mb-4 xl:mb-5 min-[1400px]:mb-5">
-          <AuthTitle
-            title={lang === "uz" ? "Demo kirish" : "Демо-доступ"}
-            compact
-          />
-          <AuthSubtitle>
-            {lang === "uz"
-              ? "Operator bergan demo hisob ma'lumotlarini kiriting."
-              : "Введите данные демо-аккаунта, выданные оператором."}
-          </AuthSubtitle>
+          <AuthTitle title={db.auth_demo_title} compact />
+          <AuthSubtitle>{db.auth_demo_sub}</AuthSubtitle>
         </div>
         <form onSubmit={handleDemoSubmit} className="space-y-2 xl:space-y-3 min-[1400px]:space-y-3">
           <TextInput
             data-testid="demo-account"
-            placeholder={lang === "uz" ? "Demo hisob" : "Демо-аккаунт"}
+            placeholder={db.auth_demo_account}
             autoComplete="username"
             value={demoAccount}
             onChange={(event) => setDemoAccount(event.target.value)}
@@ -332,7 +309,7 @@ export function AuthForm({ onSuccess }) {
           />
           <TextInput
             data-testid="demo-password"
-            placeholder={lang === "uz" ? "Parol" : "Пароль"}
+            placeholder={db.auth_demo_password}
             type="password"
             autoComplete="current-password"
             value={demoPassword}
@@ -345,9 +322,7 @@ export function AuthForm({ onSuccess }) {
             </p>
           ) : null}
           <PrimaryButton data-testid="demo-login-submit" type="submit" disabled={demoLoading}>
-            {demoLoading
-              ? (lang === "uz" ? "Kirilmoqda..." : "Вход...")
-              : (lang === "uz" ? "Demo rejimiga kirish" : "Войти в демо")}
+            {demoLoading ? db.auth_demo_loading : db.auth_demo_open}
           </PrimaryButton>
           <button
             data-testid="demo-login-back"
@@ -358,7 +333,7 @@ export function AuthForm({ onSuccess }) {
               setStep("phone");
             }}
           >
-            {lang === "uz" ? "Telefon orqali kirish" : "Войти по телефону"}
+            {db.auth_demo_phone_link}
           </button>
         </form>
       </AuthColumn>
@@ -373,9 +348,9 @@ export function AuthForm({ onSuccess }) {
           <AuthSubtitle>{regSub}</AuthSubtitle>
         </div>
         <form onSubmit={handleProfileSubmit} className="space-y-2 xl:space-y-3 min-[1400px]:space-y-3">
-          <TextInput data-testid="auth-first-name" placeholder={db.auth_first_name || "Ismingiz"} value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
-          <TextInput data-testid="auth-last-name" placeholder={db.auth_last_name || "Familiyangiz"} value={lastName} onChange={(e) => setLastName(e.target.value)} required />
-          <PrimaryButton data-testid="auth-profile-submit" type="submit">{db.auth_finish || "Yakunlash"}</PrimaryButton>
+          <TextInput data-testid="auth-first-name" placeholder={db.auth_first_name} value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+          <TextInput data-testid="auth-last-name" placeholder={db.auth_last_name} value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+          <PrimaryButton data-testid="auth-profile-submit" type="submit">{db.auth_finish}</PrimaryButton>
         </form>
       </AuthColumn>
     );
@@ -389,7 +364,7 @@ export function AuthForm({ onSuccess }) {
           <AuthSubtitle>{otpSub}</AuthSubtitle>
           {devOtpCode ? (
             <p className="auth-dev-code" role="status">
-              <span>{lang === 'uz' ? "Test rejimi — SMS hali ulanmagan" : "Тестовый режим — SMS ещё не подключены"}</span>
+              <span>{db.auth_test_mode}</span>
               <b>{devOtpCode}</b>
             </p>
           ) : null}
@@ -413,7 +388,7 @@ export function AuthForm({ onSuccess }) {
               />
             ))}
           </div>
-          <PrimaryButton data-testid="auth-otp-submit" type="submit">{db.auth_confirm || "Tasdiqlash"}</PrimaryButton>
+          <PrimaryButton data-testid="auth-otp-submit" type="submit">{db.auth_confirm}</PrimaryButton>
         </form>
       </AuthColumn>
     );
@@ -428,7 +403,7 @@ export function AuthForm({ onSuccess }) {
       <form onSubmit={handlePhoneSubmit} className="space-y-2 xl:space-y-3 min-[1400px]:space-y-3">
         <TextInput
           data-testid="auth-phone"
-          placeholder={db.auth_phone_placeholder || "+998 90 123 45 67"}
+          placeholder={db.auth_phone_placeholder}
           autoComplete="tel"
           value={phone}
           onChange={handlePhoneChange}
@@ -436,11 +411,11 @@ export function AuthForm({ onSuccess }) {
         />
         {GOOGLE_SIGN_IN_READY ? (
           <>
-            <Divider label={db.auth_or || "yoki"} />
-            <GoogleButton label={db.auth_google || "Google orqali kirish"} />
+            <Divider label={db.auth_or} />
+            <GoogleButton label={db.auth_google} />
           </>
         ) : null}
-        <PrimaryButton data-testid="auth-send-otp" type="submit">{db.auth_get_code || "Kodni olish"}</PrimaryButton>
+        <PrimaryButton data-testid="auth-send-otp" type="submit">{db.auth_get_code}</PrimaryButton>
         {demoAvailable ? (
           <button
             data-testid="demo-login-open"
@@ -448,7 +423,7 @@ export function AuthForm({ onSuccess }) {
             className="auth-link mx-auto block pt-2 text-[12px] font-bold"
             onClick={() => setStep("demo")}
           >
-            {lang === "uz" ? "Demo rejimiga kirish" : "Войти в демо"}
+            {db.auth_demo_open}
           </button>
         ) : null}
       </form>
@@ -474,10 +449,10 @@ export function ForgotPasswordForm() {
     return { title: text, accent: "" };
   };
 
-  const titleText = parseTitle(db.auth_forgot_title || "Parolni tiklash");
-  const subText = db.auth_forgot_sub || "Hisobingizga ulangan email yoki telefon raqamini kiriting. Parolni tiklash uchun tasdiqlash kodini yuboramiz.";
-  const btnText = db.auth_forgot_btn || "Tiklash kodini yuborish";
-  const loginLink = db.auth_forgot_login || "Parolingiz esingizdami? Kirish";
+  const titleText = parseTitle(db.auth_forgot_title);
+  const subText = db.auth_forgot_sub;
+  const btnText = db.auth_forgot_btn;
+  const loginLink = db.auth_forgot_login;
 
   return (
     <AuthColumn narrow>
@@ -486,13 +461,13 @@ export function ForgotPasswordForm() {
         <AuthSubtitle>{subText}</AuthSubtitle>
       </div>
       <form className="space-y-3 xl:space-y-4">
-        <TextInput placeholder={db.auth_forgot_placeholder || "Email yoki telefon raqami"} autoComplete="email" />
+        <TextInput placeholder={db.auth_forgot_placeholder} autoComplete="email" />
         <PrimaryButton type="button" onClick={() => { navigate("verify"); }}>
           {btnText}
         </PrimaryButton>
       </form>
       <p className="mt-5 text-center text-[10px] font-bold text-joyDeep xl:mt-5 xl:text-[12px] min-[1400px]:text-[14px]">
-        {loginLink.split('?')[0]}? <a href="/login" className="auth-link">{loginLink.split('?')[1] || "Kirish"}</a>
+        {loginLink.split('?')[0]}? <a href="/login" className="auth-link">{loginLink.split('?')[1]}</a>
       </p>
     </AuthColumn>
   );
@@ -512,10 +487,10 @@ export function VerifyCodeForm() {
     return { title: text, accent: "" };
   };
 
-  const titleText = parseTitle(db.auth_verify_title || "Kodni tasdiqlang");
-  const subText = db.auth_verify_sub || "Email yoki telefon raqamingizga yuborilgan 6 xonali tasdiqlash kodini kiriting.";
-  const btnText = db.auth_verify_btn || "Tasdiqlash";
-  const resendLink = db.auth_verify_resend || "Kod kelmadimi? Qayta yuborish";
+  const titleText = parseTitle(db.auth_verify_title);
+  const subText = db.auth_verify_sub;
+  const btnText = db.auth_verify_btn;
+  const resendLink = db.auth_verify_resend;
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
 
@@ -575,7 +550,7 @@ export function VerifyCodeForm() {
               onChange={(e) => handleOtpChange(index, e.target.value)}
               onKeyDown={(e) => handleOtpKeyDown(index, e)}
               onPaste={handleOtpPaste}
-              aria-label={`${index + 1}-raqam`}
+              aria-label={String(db.auth_digit_label || "").replace("{n}", index + 1)}
             />
           ))}
         </div>
@@ -583,7 +558,7 @@ export function VerifyCodeForm() {
           <PrimaryButton type="submit">{btnText}</PrimaryButton>
         </div>
         <p className="mt-5 text-center text-[10px] font-bold text-joyDeep xl:mt-5 xl:text-[12px] min-[1400px]:text-[14px]">
-          {resendLink.split('?')[0]}? <a href="/forgot" className="auth-link">{resendLink.split('?')[1] || "Qayta yuborish"}</a>
+          {resendLink.split('?')[0]}? <a href="/forgot" className="auth-link">{resendLink.split('?')[1]}</a>
         </p>
       </main>
     </div>

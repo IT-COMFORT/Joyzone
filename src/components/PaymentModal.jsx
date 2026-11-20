@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import api, { getAccessToken, getApiErrorMessage } from "../api/client.js";
+import { useText } from "../context/LanguageContext.jsx";
 import "./PaymentModal.css";
 
 export default function PaymentModal({ isOpen, onClose, amount, title, onSuccess, productDetails, defaultPhone }) {
+  const { t, lang, locale } = useText();
   const [method, setMethod] = useState("card"); // card, click, payme, uzum
   const [cardNumber, setCardNumber] = useState("");
   const [cardHolder, setCardHolder] = useState("");
@@ -105,7 +107,7 @@ export default function PaymentModal({ isOpen, onClose, amount, title, onSuccess
       } else if (subscriptionId) {
         payload.subscription_id = subscriptionId;
       } else {
-        throw new Error("Не найдена подписка для оплаты. Выберите тариф заново.");
+        throw new Error(t("chk_err_subscription"));
       }
 
       const response = await api.post("/api/payments/test-pay/", payload, {
@@ -114,10 +116,10 @@ export default function PaymentModal({ isOpen, onClose, amount, title, onSuccess
 
       const paymentStatus = response.data?.payment?.status;
       if (!['test_paid', 'paid'].includes(paymentStatus)) {
-        throw new Error("Backend не подтвердил тестовую оплату.");
+        throw new Error(t("chk_err"));
       }
       if (subscriptionId && response.data?.subscription?.status !== "active") {
-        throw new Error("Подписка ещё не активирована backend.");
+        throw new Error(t("chk_err"));
       }
 
       if (onSuccess) await onSuccess(response.data);
@@ -129,7 +131,7 @@ export default function PaymentModal({ isOpen, onClose, amount, title, onSuccess
       }, 900);
     } catch (err) {
       setLoading(false);
-      setError(getApiErrorMessage(err, "To'lovni yakunlab bo'lmadi. Iltimos, qayta urinib ko'ring."));
+      setError(err?.response ? getApiErrorMessage(err, t("chk_err"), lang) : err?.message || t("chk_err"));
     }
   };
 
@@ -138,7 +140,7 @@ export default function PaymentModal({ isOpen, onClose, amount, title, onSuccess
   // Extract raw price for tax calculation
   const rawPrice = Number(amount?.replace(/[^\d]/g, "")) || 0;
   const tax = Math.round(rawPrice * 0.12);
-  const formattedTax = new Intl.NumberFormat('ru-RU').format(tax) + " UZS";
+  const formattedTax = new Intl.NumberFormat(locale).format(tax) + " UZS";
 
   return (
     <div className="pm-overlay" ref={overlayRef} data-testid="payment-modal">
@@ -152,8 +154,8 @@ export default function PaymentModal({ isOpen, onClose, amount, title, onSuccess
             {/* Left Column - Payment Fields */}
             <form onSubmit={handlePay} className="pm-left-col">
               <div className="pm-header">
-                <h2>{method === 'card' ? "Karta ma'lumotlari" : "Telefon raqami"}</h2>
-                <p>{method === 'card' ? "To'lovni amalga oshirish uchun karta ma'lumotlarini kiriting" : "To'lov so'rovini yuborish uchun telefon raqamingizni kiriting"}</p>
+                <h2>{t(method === 'card' ? "chk_card_title" : "chk_phone_title")}</h2>
+                <p>{t(method === 'card' ? "chk_card_text" : "chk_phone_text")}</p>
               </div>
               {error ? (
                 <div style={{ marginBottom: 16, padding: "10px 12px", borderRadius: 10, background: "#fef2f2", color: "#991b1b", fontSize: 13 }}>
@@ -165,16 +167,16 @@ export default function PaymentModal({ isOpen, onClose, amount, title, onSuccess
               <div className={`pm-inputs-wrapper ${method !== 'card' ? 'dimmed' : ''}`} style={{ pointerEvents: method === 'card' ? 'auto' : 'none' }}>
                 <div className="pm-inputs-grid">
                   <div className="pm-input-group">
-                    <label>Karta raqami</label>
+                    <label>{t("chk_card_number")}</label>
                     <input data-testid="payment-card-number" type="text" disabled={method !== 'card'} required={method === 'card'} placeholder="8600 •••• •••• ••••" value={cardNumber} onChange={handleNumberChange} />
                   </div>
                   <div className="pm-input-group">
-                    <label>Karta egasining ismi</label>
-                    <input data-testid="payment-card-holder" type="text" disabled={method !== 'card'} required={method === 'card'} placeholder="KARTADA YOZILGANDEK" value={cardHolder} onChange={(e) => setCardHolder(e.target.value)} />
+                    <label>{t("chk_card_holder")}</label>
+                    <input data-testid="payment-card-holder" type="text" disabled={method !== 'card'} required={method === 'card'} placeholder={t("chk_card_holder_ph")} value={cardHolder} onChange={(e) => setCardHolder(e.target.value)} />
                   </div>
                   <div className="pm-row">
                     <div className="pm-input-group flex-1">
-                      <label>Amal qilish muddati</label>
+                      <label>{t("chk_expiry")}</label>
                       <input data-testid="payment-expiry" type="text" disabled={method !== 'card'} required={method === 'card'} placeholder="MM/YY" value={expiry} onChange={handleExpiryChange} />
                     </div>
                     <div className="pm-input-group flex-1">
@@ -188,24 +190,24 @@ export default function PaymentModal({ isOpen, onClose, amount, title, onSuccess
               {/* Phone Input field for apps payments (always rendered, animated via class toggle) */}
               <div className={`pm-app-inputs ${method !== 'card' ? 'open' : ''}`}>
                 <div className="pm-input-group">
-                  <label>Telefon raqam</label>
+                  <label>{t("chk_phone")}</label>
                   <input type="tel" required={method !== 'card'} value={phone} onChange={handlePhoneChange} placeholder="+998 90 123 45 67" />
                 </div>
               </div>
 
               <button data-testid="payment-submit" type="submit" className="pm-pay-btn btn-shine" style={{ marginTop: 24 }}>
-                Tasdiqlash va to'lash
+                {t("chk_pay")}
               </button>
             </form>
 
             {/* Right Column - Billing Info */}
             <div className="pm-right-col">
-              <h3 className="pm-summary-title">To'lov turi</h3>
+              <h3 className="pm-summary-title">{t("chk_method")}</h3>
               
               {/* Payment Methods selector (moved to the right) */}
               <div className="pm-methods-selector" style={{ marginBottom: 16 }}>
                 <button type="button" className={`pm-method-tab ${method === 'card' ? 'active' : ''}`} onClick={() => setMethod('card')}>
-                  💳 Karta
+                  💳 {t("chk_card")}
                 </button>
                 <button type="button" className={`pm-method-tab method-click ${method === 'click' ? 'active' : ''}`} onClick={() => setMethod('click')}>
                   Click
@@ -221,23 +223,23 @@ export default function PaymentModal({ isOpen, onClose, amount, title, onSuccess
               {/* Simple Provider Info Text */}
               {method !== 'card' && (
                 <div className="pm-provider-text" style={{ fontSize: "13px", color: "#64748b", lineHeight: "1.5", marginBottom: 20 }}>
-                  To'lov so'rovi <strong>{method.toUpperCase()} Pay</strong> orqali kiritilgan telefon raqamiga yuboriladi.
+                  {t("chk_provider", { provider: method.toUpperCase() })}
                 </div>
               )}
 
               <div className="pm-billing-details" style={{ marginTop: "auto" }}>
-                <h3 className="pm-summary-title" style={{ fontSize: "14px", borderBottom: "1px solid #e2e8f0", paddingBottom: "10px", marginBottom: "16px" }}>To'lov tafsilotlari</h3>
+                <h3 className="pm-summary-title" style={{ fontSize: "14px", borderBottom: "1px solid #e2e8f0", paddingBottom: "10px", marginBottom: "16px" }}>{t("chk_details")}</h3>
                 <div className="pm-billing-row">
-                  <span>Asosiy summa</span>
+                  <span>{t("chk_base")}</span>
                   <strong>{amount}</strong>
                 </div>
                 <div className="pm-billing-row">
-                  <span>Soliq (НДС 12%)</span>
+                  <span>{t("chk_tax")}</span>
                   <strong>{formattedTax}</strong>
                 </div>
                 <div className="pm-billing-divider" />
                 <div className="pm-billing-total">
-                  <span>Jami</span>
+                  <span>{t("chk_total")}</span>
                   <strong>{amount}</strong>
                 </div>
               </div>
@@ -248,8 +250,8 @@ export default function PaymentModal({ isOpen, onClose, amount, title, onSuccess
         {loading && (
           <div className="pm-loading-state">
             <div className="pm-spinner" />
-            <h3>To'lov amalga oshirilmoqda...</h3>
-            <p>Iltimos, sahifani yopmang yoki yangilamang.</p>
+            <h3>{t("chk_loading")}</h3>
+            <p>{t("chk_loading_text")}</p>
           </div>
         )}
 
@@ -260,8 +262,8 @@ export default function PaymentModal({ isOpen, onClose, amount, title, onSuccess
                 <path d="M20 6 9 17l-5-5" />
               </svg>
             </div>
-            <h3>To'lov muvaffaqiyatli bajarildi!</h3>
-            <p>Tranzaksiya tasdiqlandi. Rahmat!</p>
+            <h3>{t("chk_success")}</h3>
+            <p>{t("chk_success_text")}</p>
           </div>
         )}
       </div>

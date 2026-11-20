@@ -547,3 +547,22 @@
 @media (prefers-reduced-motion: reduce) {
   .ab-shot { animation: none; }
 }
+
+/* Live numbers: each column rises in, then the count runs up. */
+.ab-stats div {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 500ms ease, transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: calc(var(--i, 0) * 110ms);
+}
+
+.ab-stats.is-in div {
+  opacity: 1;
+  transform: none;
+}
+
+.ab-stats strong { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ab-stats div { opacity: 1; transform: none; transition: none; }
+}

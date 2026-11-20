@@ -1,6 +1,7 @@
 import logoImage from "../../assets/img/Logo.png";
-import React, { useEffect, useRef, useState } from "react";
-import { getStorageItem, getStoredLanguage, setStorageItem, setStoredLanguage, STORAGE_KEYS } from "../../utils/storageKeys.js";
+import React, { useContext, useEffect, useRef, useState } from "react";
+import { LanguageContext } from "../../context/LanguageContext.jsx";
+import { getStorageItem, setStorageItem, STORAGE_KEYS } from "../../utils/storageKeys.js";
 
 export function Logo() {
   return (
@@ -64,16 +65,9 @@ export function NoteIcon({ filled = false }) {
 }
 
 export function LangButton() {
-  const getInitialLanguage = () => {
-    try {
-      return getStoredLanguage("uz").toUpperCase();
-    } catch (error) {
-      return "UZ";
-    }
-  };
-
+  const { lang, setLang } = useContext(LanguageContext);
+  const language = String(lang || "uz").toUpperCase();
   const [open, setOpen] = useState(false);
-  const [language, setLanguage] = useState(getInitialLanguage);
   const rootRef = useRef(null);
   const languages = [
     { code: "UZ", name: "O'zbekcha" },
@@ -95,12 +89,7 @@ export function LangButton() {
   }, [language]);
 
   const chooseLanguage = (code) => {
-    setLanguage(code);
-    try {
-      setStoredLanguage(code);
-    } catch (error) {
-      // The control still works if storage is unavailable.
-    }
+    setLang(code.toLowerCase());
     setOpen(false);
   };
 

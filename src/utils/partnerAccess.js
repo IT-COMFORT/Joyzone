@@ -65,7 +65,7 @@ export function consumeLoginReturn() {
 
 // Labels for the role-aware "list your place" buttons.
 export const PARTNER_CTA_TEXT = {
-  uz: { become: "Hamkor bo'lish", add: "Joy qo'shish", becomeDesc: "Ariza — 2 daqiqa", addDesc: "Yangi e'lon" },
+  uz: { become: "E'lon joylashtirish", add: "E'lon qo'shish", becomeDesc: "Ariza — 2 daqiqa", addDesc: "Yangi e'lon" },
   ru: { become: "Стать партнёром", add: "Добавить место", becomeDesc: "Заявка — 2 минуты", addDesc: "Новое объявление" },
   en: { become: "Become a partner", add: "Add a place", becomeDesc: "Apply in 2 minutes", addDesc: "New listing" },
 };

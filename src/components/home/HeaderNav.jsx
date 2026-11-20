@@ -1,11 +1,13 @@
 import { mailHref, phoneHref, socialLinks } from "../../utils/cmsLinks.js";
+import { SocialIcon } from "../ui/SocialIcon.jsx";
 import React, { useEffect, useId, useRef, useState, useContext } from "react";
 import { createPortal } from "react-dom";
 import { gsap } from "gsap";
 import { logoutSession } from "../../api/client.js";
-import { LanguageContext } from "../../context/LanguageContext.jsx";
+import { LanguageContext, useText } from "../../context/LanguageContext.jsx";
 import { getStorageItem, STORAGE_KEYS } from "../../utils/storageKeys.js";
 import logoImage from "../../assets/img/Logo.png";
+import logoOnBlue from "../../assets/img/logoOnBlue.png";
 import { navigate, useRoute } from "../../utils/router.js";
 import { ADD_PLACE_PATH, BECOME_PARTNER_PATH, PARTNER_CTA_TEXT, useAccountRole } from "../../utils/partnerAccess.js";
 
@@ -21,18 +23,17 @@ export function useIsMobile() {
 
 export const navLinks = [
   { href: "/", label: "Bosh sahifa" },
-  { href: "/about-us", label: "Biz haqimizda" },
-  { href: "/filter", label: "Ijaraga joylar" },
-  { href: "#faq", label: "FAQ" },
-  { href: "#contact", label: "Kontaktlar" }
+  { href: "/filter", label: "Katalog" },
+  { href: "/partner-guide", label: "E'lon joylash qo'llanmasi" },
+  { href: "/filter?deal_type=sale", label: "Sotuvda" }
 ];
 
-export const dashboardNavLinks = [
-  { href: "/host-today", label: "Bugun" },
-  { href: "/host-calendar", label: "Grafik" },
-  { href: "/host-listings", label: "Mening joylarim" },
-  { href: "/host-messages", label: "Xabarlar" },
-  { href: "/host-tariffs", label: "Tariflar" }
+const SALE_HREF = "/filter?deal_type=sale";
+
+const dashboardNavLinks = [
+  { href: "/host-listings", key: "dash_nav_listings" },
+  { href: "/host-messages", key: "dash_nav_messages" },
+  { href: "/host-tariffs", key: "dash_nav_tariffs" }
 ];
 
 // The user's photo, or a drawn default avatar when there is none (or it fails to load).
@@ -71,7 +72,14 @@ export function MenuIcon({ open = false }) {
 
 export function MobileBottomMenu({ userState, isMenuOpen, setIsMenuOpen, variant }) {
   const isDashboard = variant === "dashboard";
-  const statusHref = userState.isAuthed ? (userState.isPartner ? "/partner" : "/profile") : "/login";
+  const statusHref = userState.isAuthed ? "/profile" : "/login";
+  const { t } = useText();
+  const route = useRoute();
+  // Which bottom tab is lit: the catalog, the account pages, or home.
+  const bottomTab = route === "filter" || route.startsWith("space-") ? "search"
+    : route === "home" ? "home"
+      : ["profile", "profile-edit", "settings"].includes(route) || route.startsWith("host-") ? "profile"
+        : "";
 
   return createPortal(
     <div className="mobile-bottom-menu">
@@ -79,42 +87,38 @@ export function MobileBottomMenu({ userState, isMenuOpen, setIsMenuOpen, variant
         <>
           <a href="/" className="mobile-menu-item">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-            <span>Asosiy</span>
+            <span>{t("dash_home")}</span>
           </a>
-          <a href="/host-today" className="mobile-menu-item">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            <span>Bugun</span>
-          </a>
-          <a href="/host-calendar" className="mobile-menu-item">
+          <a href="/host-listings" className="mobile-menu-item">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg>
-            <span>Grafik</span>
+            <span>{t("dash_nav_listings")}</span>
           </a>
           <a href="/host-messages" className="mobile-menu-item">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            <span>Xabarlar</span>
+            <span>{t("dash_nav_messages")}</span>
           </a>
           <button className={`mobile-menu-item burger-btn ${isMenuOpen ? "active" : ""}`} onClick={() => setIsMenuOpen(!isMenuOpen)}>
             <MenuIcon open={isMenuOpen} />
-            <span>Menyu</span>
+            <span>{t("dash_menu")}</span>
           </button>
         </>
       ) : (
         <>
-          <a href="/" className="mobile-menu-item active">
+          <a href="/" className={`mobile-menu-item${bottomTab === "home" ? " active" : ""}`}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-            <span>Asosiy</span>
+            <span>{t("dash_home")}</span>
           </a>
-          <a href="/filter" className="mobile-menu-item">
+          <a href="/filter" className={`mobile-menu-item${bottomTab === "search" ? " active" : ""}`}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <span>Izlash</span>
+            <span>{t("dash_search")}</span>
           </a>
-          <a href={statusHref} className="mobile-menu-item">
+          <a href={statusHref} className={`mobile-menu-item${bottomTab === "profile" ? " active" : ""}`}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            <span>Profil</span>
+            <span>{t("dash_profile")}</span>
           </a>
           <button className={`mobile-menu-item burger-btn ${isMenuOpen ? "active" : ""}`} onClick={() => setIsMenuOpen(!isMenuOpen)}>
             <MenuIcon open={isMenuOpen} />
-            <span>Menyu</span>
+            <span>{t("dash_menu")}</span>
           </button>
         </>
       )}
@@ -164,10 +168,27 @@ function usePartnerButtonRoom(navRef, rightRef, logoRef) {
 
 // Which top-nav link a page belongs to. The CMS can reorder the links, so the
 // active one is found by its href rather than by a fixed position.
-function navHrefForRoute(route) {
+// The catalog and the sale link share a route, so the query decides between them.
+function useLocationSearch() {
+  const [search, setSearch] = useState(window.location.search);
+  useEffect(() => {
+    const sync = () => setSearch(window.location.search);
+    window.addEventListener("joyzone-route-change", sync);
+    window.addEventListener("popstate", sync);
+    return () => {
+      window.removeEventListener("joyzone-route-change", sync);
+      window.removeEventListener("popstate", sync);
+    };
+  }, []);
+  return search;
+}
+
+function navHrefForRoute(route, search) {
   if (route === "home") return "/";
-  if (route === "filter" || route.startsWith("space-")) return "/filter";
+  if (route === "filter") return new URLSearchParams(search).get("deal_type") === "sale" ? SALE_HREF : "/filter";
+  if (route.startsWith("space-")) return "/filter";
   if (route === "about-us") return "/about-us";
+  if (route === "partner-guide") return "/partner-guide";
   return null;
 }
 
@@ -187,12 +208,15 @@ export function Header({ userState, setUserState, activeIndex: activeIndexProp =
     currentNavLinks = db.nav_links_arr;
   }
   
-  const navigationLinks = isDashboard ? dashboardNavLinks : currentNavLinks;
+  const navigationLinks = isDashboard ? dashboardNavLinks.map((link) => ({ ...link, label: db[link.key] })) : currentNavLinks;
   const route = useRoute();
-  const routeHref = navHrefForRoute(route);
+  const search = useLocationSearch();
+  const routeHref = navHrefForRoute(route, search);
+  const exactIndex = routeHref ? navigationLinks.findIndex((link) => link.href === routeHref) : -1;
+  // A sale search without its own link in the bar still lights up the catalog.
   const activeIndex = isDashboard
     ? activeIndexProp
-    : routeHref ? navigationLinks.findIndex((link) => link.href === routeHref) : -1;
+    : exactIndex >= 0 || routeHref !== SALE_HREF ? exactIndex : navigationLinks.findIndex((link) => link.href === "/filter");
 
   useEffect(() => {
     const nav = navRef.current;
@@ -260,11 +284,11 @@ export function Header({ userState, setUserState, activeIndex: activeIndexProp =
   }, []);
 
   const statusLabel = isDashboard
-    ? "Home"
+    ? db.dash_home
     : userState.isAuthed
-      ? (userState.isPartner ? "Partner" : (db.nav_profile || "Profil"))
+      ? (db.nav_profile || "Profil")
       : (db.nav_login || "Kirish");
-  const statusHref = isDashboard ? "/" : userState.isAuthed ? (userState.isPartner ? "/partner" : "/profile") : "/login";
+  const statusHref = isDashboard ? "/" : userState.isAuthed ? "/profile" : "/login";
   const { canListPlaces } = useAccountRole();
   const ctaText = PARTNER_CTA_TEXT[lang] || PARTNER_CTA_TEXT.uz;
   const partnerFits = usePartnerButtonRoom(navRef, rightRef, logoRef);
@@ -331,12 +355,12 @@ export const menuNavLinks = [
     href: "/about-us",
     label: "Biz haqimizda",
     num: "01",
-    desc: "Kompaniya haqida",
+    desc: "Joyzone haqida",
     icon: "info",
     subLinks: [
-      { id: "company", href: "/about-us", label: "Biz haqimizda", desc: "Kompaniya, jamoa va maqsadlar" },
-      { id: "info", href: "/mobile-info", label: "Afzalliklar va FAQ", desc: "Joyzone haqida batafsil", mobileOnly: true },
-      { id: "guide", href: "/partner-guide", label: "Hamkorlar qo'llanmasi", desc: "Joy egasi uchun yo'l xaritasi" }
+      { id: "company", href: "/about-us", label: "Biz haqimizda", desc: "Kompaniya va jamoa" },
+      { id: "guide", href: "/partner-guide", label: "E'lon joylash qo'llanmasi", desc: "Joy egasi uchun yo'l xaritasi" },
+      { id: "info", href: "/mobile-info", label: "Afzalliklar va FAQ", desc: "Joyzone haqida batafsil", mobileOnly: true }
     ]
   },
   {
@@ -348,7 +372,7 @@ export const menuNavLinks = [
     icon: "search",
     subLinks: [
       { id: "catalog", href: "/filter", label: "Ofis va kovorkinglar", desc: "Katalogni ochish" },
-      { id: "add", href: "/partner", label: "Joy qo'shish", desc: "Mulkdor bo'lish" }
+      { id: "add", href: "/partner", label: "E'lon qo'shish", desc: "Joyingizni joylashtiring" }
     ]
   },
   { id: "saved", href: "/profile", label: "Saqlangan", num: "03", desc: "Yoqtirgan joylar", icon: "heart", requiresAuth: true },
@@ -445,7 +469,7 @@ export const menuIconMap = {
 
 export const mobileQuickActions = [
   { id: "find", href: "/filter", label: "Joy topish", desc: "Katalog", icon: <IconSearch /> },
-  { id: "add", href: "/partner", label: "Joy qo'shish", desc: "Hamkorlik", icon: <IconBriefcase /> }
+  { id: "add", href: "/partner", label: "E'lon qo'shish", desc: "Joy egalari uchun", icon: <IconBriefcase /> }
 ];
 
 // Menu labels come from the CMS (menu_<id>_label / _desc), constants are fallbacks.
@@ -482,7 +506,12 @@ export function SideDrawer({ open, onClose, userState, setUserState, variant = "
   const isMobile = useIsMobile();
   const { canListPlaces } = useAccountRole();
   const ctaText = PARTNER_CTA_TEXT[lang] || PARTNER_CTA_TEXT.uz;
-  const currentMenuLinks = isDashboard ? profileMenuLinks : menuNavLinks.map((link) => {
+  const currentMenuLinks = isDashboard ? profileMenuLinks.map((link) => ({
+    ...link,
+    iconKey: link.label,
+    label: cms[`dash_menu_${link.id}_label`] || link.label,
+    desc: cms[`dash_menu_${link.id}_desc`] || link.desc,
+  })) : menuNavLinks.map((link) => {
     const localized = localizeMenuLink(link, cms, "menu", isMobile);
     return { ...localized, subLinks: localized.subLinks?.map((sub) => withPartnerEntry(sub, canListPlaces, ctaText)) };
   });
@@ -561,7 +590,7 @@ export function SideDrawer({ open, onClose, userState, setUserState, variant = "
         {/* Left Column: Sidebar (Branding, contacts, social) */}
         <div className="menu-sidebar-col">
           <div className="menu-sidebar-logo-area">
-            <img src={logoImage} alt="Joyzone" className="premium-menu-logo" />
+            <img src={logoOnBlue} alt="Joyzone" className="premium-menu-logo" />
           </div>
           
           <div className="menu-sidebar-content">
@@ -589,7 +618,9 @@ export function SideDrawer({ open, onClose, userState, setUserState, variant = "
               
               <div className="menu-sidebar-socials">
                 {socialLinks(cms).map(([type, label, href]) => (
-                  <a key={type} href={href} target="_blank" rel="noreferrer" className="menu-social-btn-link">{label}</a>
+                  <a key={type} href={href} target="_blank" rel="noreferrer" className={`menu-social-icon is-${type}`} aria-label={label} title={label}>
+                    <SocialIcon type={type} />
+                  </a>
                 ))}
               </div>
 
@@ -707,10 +738,10 @@ export function SideDrawer({ open, onClose, userState, setUserState, variant = "
                 </div>
 
                 <nav className="menu-nav">
-                  {isDashboard ? <span className="menu-nav-eyebrow">Profil bo'limlari</span> : null}
+                  {isDashboard ? <span className="menu-nav-eyebrow">{cms.dash_menu_eyebrow}</span> : null}
                   <ul className="menu-nav-list">
                     {currentMenuLinks.map((link) => {
-                      const icon = isDashboard ? profileNavIcons[link.label] : menuIconMap[link.icon];
+                      const icon = isDashboard ? profileNavIcons[link.iconKey] : menuIconMap[link.icon];
                       return (
                         <li key={link.id || link.href}>
                           {link.subLinks ? (
@@ -766,7 +797,7 @@ export function SideDrawer({ open, onClose, userState, setUserState, variant = "
                         <UserAvatar src={userState.avatar} />
                       </div>
                       <div className="menu-user-details">
-                        <strong>{userState.name || getStorageItem(STORAGE_KEYS.profile.name) || "Foydalanuvchi"}</strong>
+                        <strong>{userState.name || getStorageItem(STORAGE_KEYS.profile.name) || cms.dash_user}</strong>
                         <span>{userState.phone || userState.email || getStorageItem(STORAGE_KEYS.profile.phone) || getStorageItem(STORAGE_KEYS.profile.email) || ""}</span>
                       </div>
                       <a href="/profile" className="menu-user-profile-btn" onClick={closeDrawer}>
@@ -780,7 +811,7 @@ export function SideDrawer({ open, onClose, userState, setUserState, variant = "
                           <UserAvatar src={userState.avatar} />
                         </div>
                         <div className="menu-user-details">
-                          <strong>{userState.name || getStorageItem(STORAGE_KEYS.profile.name) || "Foydalanuvchi"}</strong>
+                          <strong>{userState.name || getStorageItem(STORAGE_KEYS.profile.name) || cms.dash_user}</strong>
                           <span>{userState.phone || userState.email || getStorageItem(STORAGE_KEYS.profile.phone) || getStorageItem(STORAGE_KEYS.profile.email) || ""}</span>
                         </div>
                         <a href="/profile" className="menu-user-profile-btn" onClick={closeDrawer}>
@@ -801,7 +832,6 @@ export function SideDrawer({ open, onClose, userState, setUserState, variant = "
                   {!isDashboard && (
                     <div className="menu-widget-partner">
                       <div className="partner-widget-content">
-                        <span className="tag">{cms.menu_partner_tag || "Hamkorlar uchun"}</span>
                         <h4>{cms.menu_partner_title || "Joyingiz bormi?"}</h4>
                         <p>{cms.menu_partner_text || "Uni Joyzone-da e'lon qiling va daromad olishni boshlang"}</p>
                       </div>

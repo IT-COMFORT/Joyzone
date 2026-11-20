@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import gsap from "gsap";
+import { useText } from "../context/LanguageContext.jsx";
 import { chatPartnerName, getStoredChats, isOwnMessage } from "../utils/chatManager.js";
 import "./ChatNotificationToast.css";
 
 export function ChatNotificationToast({ onOpenChat, activeChatId = null }) {
+  const { t } = useText();
   const toastRef = useRef(null);
   const [notification, setNotification] = useState(null);
   const seenRef = useRef(null);
@@ -117,7 +119,7 @@ export function ChatNotificationToast({ onOpenChat, activeChatId = null }) {
         cursor: 'grab'
       }}
     >
-      <button type="button" className="cnt-close-btn" onClick={dismissToast} aria-label="Yopish">
+      <button type="button" className="cnt-close-btn" onClick={dismissToast} aria-label={t("cab_close")}>
         ✕
       </button>
 
@@ -127,7 +129,7 @@ export function ChatNotificationToast({ onOpenChat, activeChatId = null }) {
           <span className="cnt-pulse-dot" />
         </div>
         <div className="cnt-title-group">
-          <strong>Yangi xabar</strong>
+          <strong>{t("chat_new_message")}</strong>
           <small>{notification.senderName}</small>
         </div>
       </div>
@@ -144,7 +146,7 @@ export function ChatNotificationToast({ onOpenChat, activeChatId = null }) {
             if (onOpenChat) onOpenChat(targetId);
           }}
         >
-          Javob berish
+          {t("chat_reply")}
         </button>
       </div>
     </div>,

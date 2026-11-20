@@ -178,7 +178,7 @@
   text-align: right;
 }
 
-.hpm-money input:focus { border-color: #12283f; outline: none; }
+.hpm-money input:focus { border-color: #294a6d; outline: none; }
 
 .hpm-money input:disabled {
   background: transparent;
@@ -209,7 +209,8 @@
   color: #94a3b8;
 }
 
-.hpm-hours label {
+.hpm-hours label,
+.hpm-hours-field {
   display: grid;
   flex: 1;
   gap: 4px;
@@ -258,7 +259,7 @@
 
 .hpm-modes button.is-active,
 .hpm-discounts button.is-active {
-  border-color: #12283f;
+  border-color: #294a6d;
   background: #f8fafc;
   box-shadow: inset 0 0 0 1px #12283f;
 }
@@ -324,8 +325,8 @@
 }
 
 .hpm-discounts button.is-active i {
-  border-color: #12283f;
-  background: #12283f;
+  border-color: #294a6d;
+  background: #294a6d;
 }
 
 .hpm-discounts button.is-active i::after { transform: rotate(45deg) scale(1); }

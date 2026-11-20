@@ -134,8 +134,15 @@ export function parseApiError(error, fallback = "API request failed") {
   };
 }
 
-export function getApiErrorMessage(error, fallback) {
-  return parseApiError(error, fallback).message;
+// The server answers in English. With a language given, its message is shown only
+// when it matches that language; otherwise the translated fallback is used.
+export function getApiErrorMessage(error, fallback, lang) {
+  const message = parseApiError(error, fallback).message;
+  if (!lang) return message;
+  const isCyrillic = /[\u0400-\u04FF]/.test(message);
+  if (lang === "ru" && isCyrillic && error?.response) return message;
+  if (lang === "en" && !isCyrillic && error?.response) return message;
+  return fallback;
 }
 
 export function withUploadTimeout(config = {}) {

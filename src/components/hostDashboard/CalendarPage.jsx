@@ -1,4 +1,6 @@
-import { FALLBACK_HOST_LISTINGS, formatMoneyShort, buildHostCalendarDays, formatCalendarMonthTitle, EmptyPanel, DashboardIcon } from "./shared.jsx";
+import { FALLBACK_HOST_LISTINGS, formatMoneyShort, buildHostCalendarDays, formatCalendarMonthTitle, discountText, EmptyPanel, DashboardIcon } from "./shared.jsx";
+import { useText } from "../../context/LanguageContext.jsx";
+import { formatDayMonthShort, formatWeekdayDayMonth } from "../../utils/localeDate.js";
 import React, { useMemo, useState, useEffect, useCallback } from "react";
 import api, { getApiErrorMessage } from "../../api/client.js";
 import { fetchPlaceAvailability, getAvailabilityDay, getAvailabilitySlotStatus, getCalendarAvailabilityRange } from "../../utils/availability.js";
@@ -6,30 +8,28 @@ import { buildBlockedBookingPayload, isDateInSelectedRange, selectCalendarDate }
 import { PlacePricingModal } from "./PlacePricingModal.jsx";
 import "./calendar.css";
 import "./pricingModal.css";
+import { navigate } from "../../utils/router.js";
+import { schedulePath } from "./ListingsPage.jsx";
+import { TodayStrip } from "./TodayStrip.jsx";
 
-const PRICE_ROWS = [
-  { key: "price_hourly", label: "За час" },
-  { key: "price_daily", label: "За день" },
-  { key: "price_weekly", label: "За неделю" },
-  { key: "price_monthly", label: "За месяц" },
-];
+const PRICE_ROWS = ["price_hourly", "price_daily", "price_weekly", "price_monthly"];
 
 const PLACE_STATUS = {
-  approved: { label: "Опубликовано", tone: "good" },
-  pending: { label: "На модерации", tone: "warn" },
-  rejected: { label: "Отклонено", tone: "bad" },
+  approved: { label: "place_status_approved", tone: "good" },
+  pending: { label: "place_status_pending", tone: "warn" },
+  rejected: { label: "place_status_rejected", tone: "bad" },
 };
 
 const BOOKING_STATUS = {
-  pending: { label: "Ждёт ответа", tone: "warn" },
-  confirmed: { label: "Подтверждено", tone: "good" },
-  completed: { label: "Завершено", tone: "muted" },
-  blocked: { label: "Закрыто вами", tone: "muted" },
-  cancelled: { label: "Отменено", tone: "bad" },
+  pending: { label: "cal_status_waiting", tone: "warn" },
+  confirmed: { label: "status_confirmed", tone: "good" },
+  completed: { label: "status_completed", tone: "muted" },
+  blocked: { label: "cal_status_blocked", tone: "muted" },
+  cancelled: { label: "status_cancelled", tone: "bad" },
 };
 
-const WEEKDAY_FORMAT = new Intl.DateTimeFormat("ru-RU", { weekday: "long", day: "numeric", month: "long" });
-const SHORT_DATE_FORMAT = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" });
+// The default note the site saves when an owner closes time without a reason.
+const AUTO_BLOCK_NOTE = "Ручная блокировка владельцем";
 
 function toDateKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -38,11 +38,6 @@ function toDateKey(date) {
 function dateFromKey(key) {
   const [year, month, day] = String(key).split("-").map(Number);
   return new Date(year, month - 1, day);
-}
-
-function formatPrice(value) {
-  const amount = Number(value);
-  return Number.isFinite(amount) && amount > 0 ? `${amount.toLocaleString("ru-RU")} сум` : null;
 }
 
 function hhmm(value, fallback) {
@@ -70,15 +65,20 @@ function Pill({ tone, children }) {
   return <span className={`hcal-pill is-${tone}`}>{children}</span>;
 }
 
-export function CalendarPage({ listings = [], bookings = [], usingFallback = false, onBookingCreated, onPlaceUpdated, onEditPlace }) {
+export function CalendarPage({ placeId = "", listings = [], bookings = [], usingFallback = false, onBookingCreated, onPlaceUpdated, onEditPlace }) {
+  const { t, plural, lang, locale } = useText();
+  const formatPrice = (value) => {
+    const amount = Number(value);
+    return Number.isFinite(amount) && amount > 0 ? `${amount.toLocaleString(locale)} ${t("cab_sum")}` : null;
+  };
   const displayListings = useMemo(
     () => listings.length > 0 ? listings : (usingFallback && import.meta.env.DEV ? FALLBACK_HOST_LISTINGS : []),
     [listings, usingFallback],
   );
-  const [selectedSpaceId, setSelectedSpaceId] = useState(null);
-  // Derived from the list so a refreshed place (after saving prices) shows up at once.
-  const activeSpace = displayListings.find((item) => item.id === selectedSpaceId) || displayListings[0] || null;
-  const setActiveSpace = (space) => setSelectedSpaceId(space?.id ?? null);
+  // Sale listings have no schedule. The place comes from the address (?place=),
+  // and is read from the list so a refreshed place (after saving prices) shows up at once.
+  const schedulable = useMemo(() => displayListings.filter((item) => !item.isForSale), [displayListings]);
+  const activeSpace = schedulable.find((item) => String(item.id) === String(placeId)) || schedulable[0] || null;
   const [pricingOpen, setPricingOpen] = useState(false);
   const today = useMemo(() => new Date(), []);
   const todayKey = toDateKey(today);
@@ -124,12 +124,12 @@ export function CalendarPage({ listings = [], bookings = [], usingFallback = fal
       setAvailability(data);
       setCalendarError("");
     } catch (err) {
-      setCalendarError(getApiErrorMessage(err, "Не удалось загрузить календарь доступности"));
+      setCalendarError(getApiErrorMessage(err, t("cal_err_availability"), lang));
       setAvailability(null);
     } finally {
       setAvailabilityLoading(false);
     }
-  }, [activeSpaceId, calendarYear, calendarMonth]);
+  }, [activeSpaceId, calendarYear, calendarMonth, t, lang]);
 
   useEffect(() => {
     loadAvailability();
@@ -174,7 +174,7 @@ export function CalendarPage({ listings = [], bookings = [], usingFallback = fal
 
   const handleCreateBlock = async () => {
     if (usingFallback) {
-      setCalendarError("Блокировка недоступна для DEV fallback объекта.");
+      setCalendarError(t("cal_err_close"));
       return;
     }
 
@@ -190,7 +190,7 @@ export function CalendarPage({ listings = [], bookings = [], usingFallback = fal
         note: blockNote,
       });
     } catch (error) {
-      setCalendarError(error.message);
+      setCalendarError(t(error.message));
       return;
     }
 
@@ -200,13 +200,13 @@ export function CalendarPage({ listings = [], bookings = [], usingFallback = fal
     try {
       await api.post("/api/bookings/", payload);
       await refreshAll();
-      setCalendarNotice("Готово: период закрыт, клиенты не смогут его забронировать.");
+      setCalendarNotice(t("cal_closed_ok"));
       setBlockNote("");
     } catch (error) {
       const hasOverlap = Boolean(error.response?.data?.non_field_errors);
       setCalendarError(hasOverlap
-        ? "Выбранный день или время уже заняты. Выберите свободный период."
-        : getApiErrorMessage(error, "Не удалось закрыть выбранный период."));
+        ? t("cal_err_overlap")
+        : getApiErrorMessage(error, t("cal_err_close"), lang));
     } finally {
       setBlocking(false);
     }
@@ -214,8 +214,8 @@ export function CalendarPage({ listings = [], bookings = [], usingFallback = fal
 
   const handleBookingAction = async (booking, action) => {
     const messages = {
-      confirm: "Бронь подтверждена, клиент получит уведомление.",
-      cancel: booking.status === "blocked" ? "Период снова открыт для бронирования." : "Бронь отклонена.",
+      confirm: t("cal_confirmed_ok"),
+      cancel: t(booking.status === "blocked" ? "cal_reopened_ok" : "cal_declined_ok"),
     };
     setBusyBookingId(booking.id);
     setCalendarError("");
@@ -225,7 +225,7 @@ export function CalendarPage({ listings = [], bookings = [], usingFallback = fal
       await refreshAll();
       setCalendarNotice(messages[action]);
     } catch (error) {
-      setCalendarError(getApiErrorMessage(error, "Не удалось изменить бронь."));
+      setCalendarError(getApiErrorMessage(error, t("cal_err_change"), lang));
     } finally {
       setBusyBookingId(null);
     }
@@ -239,10 +239,10 @@ export function CalendarPage({ listings = [], bookings = [], usingFallback = fal
   const dayPriceLabel = useMemo(() => {
     const daily = Number(activeSpace?.price_daily);
     const hourly = Number(activeSpace?.price_hourly);
-    if (daily > 0) return `${formatMoneyShort(daily)} сум`;
-    if (hourly > 0) return `${formatMoneyShort(hourly)}/ч`;
+    if (daily > 0) return `${formatMoneyShort(daily)} ${t("cab_sum")}`;
+    if (hourly > 0) return t("cal_per_hour_short", { price: formatMoneyShort(hourly) });
     return "";
-  }, [activeSpace]);
+  }, [activeSpace, t]);
 
   const calendarDays = useMemo(
     () => buildHostCalendarDays(calendarYear, calendarMonth, availability, dayPriceLabel),
@@ -289,62 +289,58 @@ export function CalendarPage({ listings = [], bookings = [], usingFallback = fal
   const selectionTitle = !selection.startDate
     ? ""
     : isSingleDay
-      ? WEEKDAY_FORMAT.format(dateFromKey(selection.startDate))
-      : `${SHORT_DATE_FORMAT.format(dateFromKey(selection.startDate))} — ${SHORT_DATE_FORMAT.format(dateFromKey(selection.endDate))}`;
+      ? formatWeekdayDayMonth(dateFromKey(selection.startDate), lang)
+      : `${formatDayMonthShort(dateFromKey(selection.startDate), lang)} — ${formatDayMonthShort(dateFromKey(selection.endDate), lang)}`;
   const selectionInPast = selection.startDate && selection.startDate < todayKey;
   const placeStatus = PLACE_STATUS[activeSpace?.status] || PLACE_STATUS.pending;
-  const monthName = formatCalendarMonthTitle(calendarYear, calendarMonth);
+  const monthName = formatCalendarMonthTitle(calendarYear, calendarMonth, lang);
 
   return (
     <div className="host-calendar-page-container hcal">
-      <div className="host-spaces-top-bar" style={{ marginBottom: "24px" }}>
-        <div className="host-section-head compact" style={{ marginBottom: "14px" }}>
-          <div>
-            <span>{usingFallback ? "Объекты · DEV fallback" : "Шаг 1"}</span>
-            <h2>Выберите место</h2>
+      <div className="hcal-bar">
+        <a className="hcal-back" href="/host-listings">
+          <DashboardIcon type="chevronLeft" />
+          <span>{t("cal_back")}</span>
+        </a>
+        {activeSpace ? (
+          <div className="hcal-place">
+            <img src={activeSpace.images?.[0] || "/placeholder-space.jpg"} alt="" />
+            <div>
+              <small>{t("cal_kicker")}{usingFallback ? " · DEV fallback" : ""}</small>
+              <strong>{activeSpace.title}</strong>
+              <span>{activeSpace.location}</span>
+            </div>
           </div>
-        </div>
-        <div className="host-spaces-list-horizontal">
-          {displayListings.length > 0 ? displayListings.map((space) => {
-            const isActive = activeSpace && activeSpace.id === space.id;
-            return (
-              <button
-                key={space.id || space.title}
-                className={`space-card-widget-horizontal ${isActive ? "is-active" : ""}`}
-                onClick={() => setActiveSpace(space)}
-                type="button"
-              >
-                <div className="space-widget-img-horizontal">
-                  <img src={space.images?.[0] || "/placeholder-space.jpg"} alt={space.title} />
-                </div>
-                <div className="space-widget-info">
-                  <strong>{space.title}</strong>
-                  <small>{space.location}</small>
-                  <span>{space.price || "0 UZS"}</span>
-                </div>
-              </button>
-            );
-          }) : (
-            <EmptyPanel title="Нет мест для календаря" text="Добавьте или дождитесь модерации места, чтобы управлять доступностью." action="Добавить место" href="/partner" />
-          )}
-        </div>
+        ) : null}
+        {schedulable.length > 1 ? (
+          <label className="hcal-switch">
+            <span>{t("cal_switch_place")}</span>
+            <select value={activeSpace?.id ?? ""} onChange={(event) => navigate(schedulePath({ id: event.target.value }))}>
+              {schedulable.map((space) => <option key={space.id} value={space.id}>{space.title}</option>)}
+            </select>
+          </label>
+        ) : null}
       </div>
+
+      {!activeSpace ? (
+        <EmptyPanel title={t("cal_no_places_title")} text={t("cal_no_places_text")} action={t("cab_add_place")} href="/partner" />
+      ) : null}
 
       {activeSpace ? (
         <div className="hcal-layout">
           <aside className="hcal-side">
             <section className="hcal-card">
               <div className="hcal-card-head">
-                <span>Условия</span>
-                <Pill tone={placeStatus.tone}>{placeStatus.label}</Pill>
+                <span>{t("cal_terms")}</span>
+                <Pill tone={placeStatus.tone}>{t(placeStatus.label)}</Pill>
               </div>
               <ul className="hcal-prices">
                 {PRICE_ROWS.map((row) => {
-                  const value = formatPrice(activeSpace[row.key]);
+                  const value = formatPrice(activeSpace[row]);
                   return (
-                    <li key={row.key} className={value ? "" : "is-empty"}>
-                      <span>{row.label}</span>
-                      <strong>{value || "не задано"}</strong>
+                    <li key={row} className={value ? "" : "is-empty"}>
+                      <span>{t(row)}</span>
+                      <strong>{value || t("cal_not_set")}</strong>
                     </li>
                   );
                 })}
@@ -352,29 +348,29 @@ export function CalendarPage({ listings = [], bookings = [], usingFallback = fal
               <div className="hcal-hours">
                 <DashboardIcon type="clock" />
                 <div>
-                  <small>Часы работы</small>
+                  <small>{t("cal_hours")}</small>
                   <strong>{opensAt} – {closesAt}</strong>
                 </div>
               </div>
               <div className="hcal-discounts">
-                <small>Скидки</small>
+                <small>{t("cal_discounts")}</small>
                 {placeDiscounts.length ? (
                   <div>
                     {placeDiscounts.map((item) => (
-                      <span key={item.id} title={item.description_ru || ""}>−{item.percent}% · {item.name_ru}</span>
+                      <span key={item.id} title={discountText(item, "description", lang)}>−{item.percent}% · {discountText(item, "name", lang)}</span>
                     ))}
                   </div>
-                ) : <p>Скидки не подключены</p>}
+                ) : <p>{t("cal_no_discounts")}</p>}
               </div>
               {!usingFallback ? (
                 <>
                   <button type="button" className="hcal-edit" onClick={() => setPricingOpen(true)}>
                     <DashboardIcon type="price" />
-                    Изменить цены и часы
+                    {t("cal_edit_prices")}
                   </button>
                   {onEditPlace ? (
                     <button type="button" className="hcal-edit-link" onClick={() => onEditPlace(activeSpace)}>
-                      Редактировать всё объявление
+                      {t("cal_edit_listing")}
                     </button>
                   ) : null}
                 </>
@@ -386,23 +382,25 @@ export function CalendarPage({ listings = [], bookings = [], usingFallback = fal
                 <span>{monthName}</span>
               </div>
               <div className="hcal-month-stats">
-                <div className="is-free"><strong>{monthStats.free}</strong><small>свободно</small></div>
-                <div className="is-booked"><strong>{monthStats.booked}</strong><small>с бронями</small></div>
-                <div className="is-blocked"><strong>{monthStats.blocked}</strong><small>закрыто</small></div>
+                <div className="is-free"><strong>{monthStats.free}</strong><small>{t("cal_free")}</small></div>
+                <div className="is-booked"><strong>{monthStats.booked}</strong><small>{t("cal_booked")}</small></div>
+                <div className="is-blocked"><strong>{monthStats.blocked}</strong><small>{t("cal_closed")}</small></div>
               </div>
               <ul className="hcal-month-list">
-                <li><span>Броней за месяц</span><strong>{monthStats.bookings}</strong></li>
-                <li className={monthStats.pending ? "is-warn" : ""}><span>Ждут ответа</span><strong>{monthStats.pending}</strong></li>
-                <li><span>Сумма броней</span><strong>{formatPrice(monthStats.revenue) || "0 сум"}</strong></li>
+                <li><span>{t("cal_month_bookings")}</span><strong>{monthStats.bookings}</strong></li>
+                <li className={monthStats.pending ? "is-warn" : ""}><span>{t("cal_waiting")}</span><strong>{monthStats.pending}</strong></li>
+                <li><span>{t("cal_month_sum")}</span><strong>{formatPrice(monthStats.revenue) || `0 ${t("cab_sum")}`}</strong></li>
               </ul>
             </section>
 
+            <TodayStrip bookings={placeBookings} scope="place" />
+
             <section className="hcal-card hcal-help">
-              <div className="hcal-card-head"><span>Как пользоваться</span></div>
+              <div className="hcal-card-head"><span>{t("cal_help_title")}</span></div>
               <ol>
-                <li>Нажмите на день — увидите брони и почасовую занятость.</li>
-                <li>Нажмите второй день — выделится период.</li>
-                <li>Закройте день или период, если место недоступно.</li>
+                <li>{t("cal_help_1")}</li>
+                <li>{t("cal_help_2")}</li>
+                <li>{t("cal_help_3")}</li>
               </ol>
             </section>
           </aside>
@@ -410,22 +408,21 @@ export function CalendarPage({ listings = [], bookings = [], usingFallback = fal
           <section className="hcal-main">
             <header className="hcal-main-head">
               <div>
-                <span>Шаг 2 · Календарь</span>
                 <h2>{monthName}</h2>
                 <p>{activeSpace.title}</p>
               </div>
               <div className="hcal-nav">
-                <button type="button" className="hcal-today" onClick={goToday}>Сегодня</button>
-                <button type="button" onClick={() => changeMonth(-1)} aria-label="Предыдущий месяц"><DashboardIcon type="chevronLeft" /></button>
-                <button type="button" onClick={() => changeMonth(1)} aria-label="Следующий месяц"><DashboardIcon type="chevronRight" /></button>
+                <button type="button" className="hcal-today" onClick={goToday}>{t("cal_today")}</button>
+                <button type="button" onClick={() => changeMonth(-1)} aria-label={t("cal_prev")}><DashboardIcon type="chevronLeft" /></button>
+                <button type="button" onClick={() => changeMonth(1)} aria-label={t("cal_next")}><DashboardIcon type="chevronRight" /></button>
               </div>
             </header>
 
             <div className="hcal-legend">
-              <span><i className="is-free" />Свободно (цена за день)</span>
-              <span><i className="is-booked" />Есть брони</span>
-              <span><i className="is-blocked" />Закрыто вами</span>
-              <span><i className="is-today" />Сегодня</span>
+              <span><i className="is-free" />{t("cal_legend_free")}</span>
+              <span><i className="is-booked" />{t("cal_legend_booked")}</span>
+              <span><i className="is-blocked" />{t("cal_legend_blocked")}</span>
+              <span><i className="is-today" />{t("cal_today")}</span>
             </div>
 
             {calendarError ? <div className="hcal-alert is-error" role="alert">{calendarError}</div> : null}
@@ -433,7 +430,7 @@ export function CalendarPage({ listings = [], bookings = [], usingFallback = fal
 
             <div className={`hcal-grid-wrap${availabilityLoading ? " is-loading" : ""}`}>
               <div className="hcal-weekdays">
-                {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((day) => <span key={day}>{day}</span>)}
+                {String(t("cal_weekdays")).split(",").map((day) => <span key={day}>{day}</span>)}
               </div>
               <div className="hcal-grid">
                 {calendarDays.map((day, index) => {
@@ -442,10 +439,10 @@ export function CalendarPage({ listings = [], bookings = [], usingFallback = fal
                   const count = getAvailabilityDay(availability, day.dateStr)?.bookings?.filter((item) => item.status !== "blocked").length || 0;
                   const isPast = day.dateStr < todayKey;
                   const caption = day.status === "blocked"
-                    ? "Закрыто"
+                    ? t("cal_day_closed")
                     : count
-                      ? `${count} ${count === 1 ? "бронь" : count < 5 ? "брони" : "броней"}`
-                      : day.price || "Свободно";
+                      ? plural("cal_day_count", count)
+                      : day.price || t("cal_day_free");
                   return (
                     <button
                       key={day.dateStr}
@@ -464,7 +461,7 @@ export function CalendarPage({ listings = [], bookings = [], usingFallback = fal
                     >
                       <strong>{day.label}</strong>
                       <small className="hcal-day-long">{caption}</small>
-                      <small className="hcal-day-short" aria-hidden="true">{day.status === "blocked" ? "закр." : count ? `${count} бр.` : ""}</small>
+                      <small className="hcal-day-short" aria-hidden="true">{day.status === "blocked" ? t("cal_day_closed_short") : count ? t("cal_day_count_short", { n: count }) : ""}</small>
                     </button>
                   );
                 })}
@@ -475,18 +472,18 @@ export function CalendarPage({ listings = [], bookings = [], usingFallback = fal
               <div className="hcal-day-panel">
                 <div className="hcal-day-panel-head">
                   <div>
-                    <span>{isSingleDay ? "Выбранный день" : "Выбранный период"}</span>
+                    <span>{t(isSingleDay ? "cal_selected_day" : "cal_selected_period")}</span>
                     <h3>{selectionTitle}</h3>
                   </div>
-                  <button type="button" onClick={() => setSelection({ startDate: "", endDate: "" })} aria-label="Сбросить выбор">
+                  <button type="button" onClick={() => setSelection({ startDate: "", endDate: "" })} aria-label={t("cal_reset")}>
                     <DashboardIcon type="close" />
                   </button>
                 </div>
 
                 {isSingleDay ? (
-                  <div className="hcal-slots" aria-label="Занятость по часам">
+                  <div className="hcal-slots" aria-label={t("cal_slots_label")}>
                     {workingSlots.map((slot) => (
-                      <span key={slot.label} className={`is-${slot.status}`} title={`${slot.label}: ${slot.status === "booked" ? "занято" : slot.status === "blocked" ? "закрыто" : "свободно"}`}>
+                      <span key={slot.label} className={`is-${slot.status}`} title={`${slot.label}: ${t(slot.status === "booked" ? "cal_slot_booked" : slot.status === "blocked" ? "cal_closed" : "cal_free")}`}>
                         {slot.label}
                       </span>
                     ))}
@@ -494,7 +491,7 @@ export function CalendarPage({ listings = [], bookings = [], usingFallback = fal
                 ) : null}
 
                 <div className="hcal-bookings">
-                  <h4>Брони {isSingleDay ? "в этот день" : "в этот период"} <small>{selectedBookings.length}</small></h4>
+                  <h4>{t(isSingleDay ? "cal_bookings_day" : "cal_bookings_period")} <small>{selectedBookings.length}</small></h4>
                   {selectedBookings.length ? selectedBookings.map((booking) => {
                     const status = BOOKING_STATUS[booking.status] || BOOKING_STATUS.pending;
                     const isBlock = booking.status === "blocked";
@@ -506,55 +503,55 @@ export function CalendarPage({ listings = [], bookings = [], usingFallback = fal
                           <small>{clock(booking.end_time)}</small>
                         </div>
                         <div className="hcal-booking-body">
-                          <strong>{isBlock ? (booking.note && booking.note !== "Без заметки" ? booking.note : "Закрыто владельцем") : (booking.client_name || "Клиент Joyzone")}</strong>
+                          <strong>{isBlock ? (booking.ownerNote && booking.ownerNote !== AUTO_BLOCK_NOTE ? booking.ownerNote : t("cal_closed_owner")) : (booking.client_name || t("host_client"))}</strong>
                           <small>
-                            {isBlock ? booking.durationLabel : [booking.client_phone !== booking.client_name ? booking.client_phone : "", booking.durationLabel, formatPrice(booking.amount)].filter(Boolean).join(" · ")}
+                            {isBlock ? booking.durationText : [booking.client_phone !== booking.client_name ? booking.client_phone : "", booking.durationText, formatPrice(booking.amount)].filter(Boolean).join(" · ")}
                           </small>
                         </div>
-                        <Pill tone={status.tone}>{status.label}</Pill>
+                        <Pill tone={status.tone}>{t(status.label)}</Pill>
                         <div className="hcal-booking-actions">
                           {booking.status === "pending" ? (
                             <>
-                              <button type="button" className="is-primary" disabled={busy} onClick={() => handleBookingAction(booking, "confirm")}>Подтвердить</button>
-                              <button type="button" disabled={busy} onClick={() => handleBookingAction(booking, "cancel")}>Отклонить</button>
+                              <button type="button" className="is-primary" disabled={busy} onClick={() => handleBookingAction(booking, "confirm")}>{t("cal_confirm")}</button>
+                              <button type="button" disabled={busy} onClick={() => handleBookingAction(booking, "cancel")}>{t("cal_decline")}</button>
                             </>
                           ) : null}
                           {isBlock ? (
-                            <button type="button" disabled={busy} onClick={() => handleBookingAction(booking, "cancel")}>Открыть снова</button>
+                            <button type="button" disabled={busy} onClick={() => handleBookingAction(booking, "cancel")}>{t("cal_reopen")}</button>
                           ) : null}
                         </div>
                       </article>
                     );
-                  }) : <p className="hcal-muted">Броней нет — день свободен.</p>}
+                  }) : <p className="hcal-muted">{t("cal_no_bookings")}</p>}
                 </div>
 
                 {selectionInPast ? (
-                  <p className="hcal-muted">Прошедшие дни закрыть нельзя.</p>
+                  <p className="hcal-muted">{t("cal_past")}</p>
                 ) : (
                   <div className="hcal-block-form">
-                    <h4>Закрыть {isSingleDay ? "день" : "период"} для клиентов</h4>
-                    <div className="hcal-segment" aria-label="Тип блокировки">
-                      <button type="button" className={blockMode === "daily" ? "is-active" : ""} onClick={() => setBlockMode("daily")}>Весь день</button>
+                    <h4>{t(isSingleDay ? "cal_close_day_title" : "cal_close_period_title")}</h4>
+                    <div className="hcal-segment" aria-label={t("cal_block_type")}>
+                      <button type="button" className={blockMode === "daily" ? "is-active" : ""} onClick={() => setBlockMode("daily")}>{t("cal_all_day")}</button>
                       <button
                         type="button"
                         className={blockMode === "hourly" ? "is-active" : ""}
                         disabled={!isSingleDay}
-                        title={isSingleDay ? "" : "По часам можно закрыть только один день"}
+                        title={isSingleDay ? "" : t("cal_hours_only_hint")}
                         onClick={() => setBlockMode("hourly")}
                       >
-                        Только часы
+                        {t("cal_hours_only")}
                       </button>
                     </div>
                     <div className="hcal-form-row">
                       {blockMode === "hourly" && isSingleDay ? (
                         <>
-                          <label>С<input type="time" value={blockStartTime} onChange={(event) => setBlockStartTime(event.target.value)} /></label>
-                          <label>До<input type="time" value={blockEndTime} onChange={(event) => setBlockEndTime(event.target.value)} /></label>
+                          <label>{t("cal_from")}<input type="time" value={blockStartTime} onChange={(event) => setBlockStartTime(event.target.value)} /></label>
+                          <label>{t("cal_to")}<input type="time" value={blockEndTime} onChange={(event) => setBlockEndTime(event.target.value)} /></label>
                         </>
                       ) : null}
                       <label className="is-grow">
-                        Причина (видите только вы)
-                        <input value={blockNote} onChange={(event) => setBlockNote(event.target.value)} placeholder="Например: ремонт, частное мероприятие" />
+                        {t("cal_reason")}
+                        <input value={blockNote} onChange={(event) => setBlockNote(event.target.value)} placeholder={t("cal_reason_ph")} />
                       </label>
                     </div>
                     <button
@@ -563,16 +560,16 @@ export function CalendarPage({ listings = [], bookings = [], usingFallback = fal
                       disabled={blocking || availabilityLoading || usingFallback || !activeSpaceId}
                       onClick={handleCreateBlock}
                     >
-                      {blocking ? "Сохраняем..." : `Закрыть ${isSingleDay ? "день" : "период"}`}
+                      {blocking ? t("cab_saving") : t(isSingleDay ? "cal_close_day" : "cal_close_period")}
                     </button>
                     {selectedDayAvailability?.bookings?.length && blockMode === "daily" ? (
-                      <p className="hcal-hint">В этом дне уже есть брони — закрыть можно только свободное время.</p>
+                      <p className="hcal-hint">{t("cal_day_has_bookings")}</p>
                     ) : null}
                   </div>
                 )}
               </div>
             ) : (
-              <p className="hcal-pick-hint">Нажмите на любой день, чтобы увидеть брони или закрыть его.</p>
+              <p className="hcal-pick-hint">{t("cal_pick_hint")}</p>
             )}
           </section>
         </div>
@@ -585,9 +582,7 @@ export function CalendarPage({ listings = [], bookings = [], usingFallback = fal
           onSaved={async (place) => {
             setPricingOpen(false);
             await onPlaceUpdated?.();
-            setCalendarNotice(place?.status === "pending"
-              ? "Цены и часы сохранены. Место отправлено на модерацию."
-              : "Цены и часы сохранены.");
+            setCalendarNotice(t(place?.status === "pending" ? "cal_saved_moderation" : "cal_saved"));
           }}
         />
       ) : null}

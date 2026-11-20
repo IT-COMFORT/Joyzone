@@ -32,6 +32,8 @@ export function profileToUserState(profile, current = {}) {
     isAuthed: true,
     isPartner: normalized.role === "partner",
     name: normalized.full_name,
+    firstName: normalized.first_name,
+    lastName: normalized.last_name,
     email: normalized.email,
     phone: normalized.phone_number,
     avatar: normalized.avatar,

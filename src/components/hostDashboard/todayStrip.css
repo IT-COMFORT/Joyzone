@@ -1,0 +1,248 @@
+/* ===== Cabinet: "Today" side card (beside My places and a place's schedule) ===== */
+
+.tds {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(18, 40, 63, 0.08);
+  border-radius: 22px;
+  background: #ffffff;
+  color: #12283f;
+  box-shadow: 0 10px 30px rgba(18, 40, 63, 0.05);
+}
+
+/* ----- head ----- */
+
+.tds-head { display: flex; align-items: center; gap: 11px; }
+
+.tds-sun {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: rgba(228, 102, 48, 0.12);
+  color: #e46630;
+}
+
+.tds-sun svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tds-head div { display: grid; gap: 1px; min-width: 0; }
+
+.tds-head small {
+  color: #e46630;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.tds-head h3 {
+  margin: 0;
+  color: #12283f;
+  font-size: 16px;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+/* ----- figures ----- */
+
+.tds-figures {
+  display: grid;
+  gap: 4px;
+}
+
+/* One row per figure: the label on the left, the number on the right. */
+.tds-figure {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 12px;
+  border-radius: 13px;
+  background: #f3f6f9;
+}
+
+.tds-figure strong {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  color: #12283f;
+  font-size: 15px;
+  font-weight: 850;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.tds-figure em { color: rgba(18, 40, 63, 0.5); font-size: 10.5px; font-style: normal; font-weight: 750; }
+
+.tds-figure small {
+  overflow: hidden;
+  color: rgba(18, 40, 63, 0.58);
+  font-size: 13px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tds-figure.is-good { background: #ecfdf3; }
+.tds-figure.is-good strong { color: #15803d; }
+.tds-figure.is-wait { background: #fff7ed; }
+.tds-figure.is-wait strong { color: #c2410c; }
+.tds-figure.is-bad { background: #fef2f2; }
+.tds-figure.is-bad strong { color: #b91c1c; }
+
+/* ----- list ----- */
+
+.tds-list { display: grid; gap: 8px; min-width: 0; }
+
+.tds-list-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(18, 40, 63, 0.08);
+  color: rgba(18, 40, 63, 0.5);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.tds-list-title i {
+  font-size: 11.5px;
+  font-style: normal;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.tds-list ul { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+
+.tds-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 7px 8px;
+  border-radius: 12px;
+  transition: background 200ms ease;
+}
+
+.tds-list li:hover { background: #f3f6f9; }
+
+.tds-when {
+  flex-shrink: 0;
+  min-width: 52px;
+  padding: 5px 7px;
+  border-radius: 9px;
+  background: #eef2f6;
+  color: #294a6d;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.tds-who { display: grid; flex: 1; min-width: 0; }
+
+.tds-who strong,
+.tds-who small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tds-who strong { font-size: 13.5px; font-weight: 750; }
+.tds-who small { color: rgba(18, 40, 63, 0.55); font-size: 12px; }
+
+/* Booking state as a small colour mark; the word is in its tooltip. */
+.tds-state { width: 8px; height: 8px; flex-shrink: 0; border-radius: 50%; }
+.tds-state.is-good { background: #16a34a; }
+.tds-state.is-wait { background: #f59e0b; }
+.tds-state.is-muted { background: #94a3b8; }
+
+.tds-empty { margin: 0; color: rgba(18, 40, 63, 0.55); font-size: 13px; }
+
+/* ----- side widgets (PlaceWidgets.jsx) ----- */
+
+.tds-title {
+  color: #12283f;
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.tds-fix { padding: 8px 10px; background: #fef2f2; }
+.tds-fix:hover { background: #fee2e2 !important; }
+.tds-fix .tds-who small { color: #991b1b; }
+
+.tds-fix button {
+  flex-shrink: 0;
+  padding: 6px 11px;
+  border: 0;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #b91c1c;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: background 200ms ease, color 200ms ease;
+}
+
+.tds-fix button:hover { background: #dc2626; color: #ffffff; }
+
+.tds-top { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+
+.tds-top a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 12px;
+  color: inherit;
+  text-decoration: none;
+  transition: background 200ms ease;
+}
+
+.tds-top a:hover { background: #f3f6f9; }
+
+.tds-rank {
+  width: 16px;
+  flex-shrink: 0;
+  color: rgba(18, 40, 63, 0.4);
+  font-size: 13px;
+  font-weight: 850;
+  text-align: center;
+}
+
+.tds-top img {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 11px;
+  background: #e8edf2;
+  object-fit: cover;
+}
+
+.tds-bar {
+  display: block;
+  height: 4px;
+  margin-top: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eef2f6;
+}
+
+.tds-bar i { display: block; height: 100%; border-radius: inherit; background: #e46630; }

@@ -1,0 +1,444 @@
+/* ===== Account pages: one frame with a rail outside the container ===== */
+
+.acc-shell {
+  --acc-ink: #12283f;
+  --acc-orange: #e46630;
+  --acc-paper: #fbf8f5;
+  --acc-gap: 18px;
+  --acc-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  overflow-x: clip;
+  /* Same side padding as the fixed header, so the frame lines up with it. */
+  padding: 108px clamp(18px, 5.7vw, 100px) 48px;
+  /* One flat colour: the same blue as the header tab, so they read as one. */
+  background: #294a6d;
+  color: var(--acc-ink);
+}
+
+.acc-frame {
+  display: grid;
+  grid-template-columns: 252px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--acc-gap);
+  width: 100%;
+}
+
+.acc-stage { min-width: 0; }
+
+/* Only the page inside the container moves on page change. Every route screen
+   is at least a screen tall elsewhere; in here the container sets the height. */
+.acc-page.route-screen,
+.acc-page.app-route-shell {
+  min-width: 0;
+  min-height: 0;
+}
+
+/* The site keeps overflow-x: hidden on <body>, which makes <body> the scroll box
+   for position: sticky and stops the rail from sticking. Account pages lift it
+   (the shell already clips sideways overflow itself). */
+body.acc-body { overflow: visible; }
+
+/* The one container every account page uses. */
+.acc-container {
+  min-height: calc(100vh - 156px);
+  padding: clamp(22px, 3.2vw, 48px);
+  border-radius: 34px;
+  background: var(--acc-paper);
+  color: #17212b;
+  box-sizing: border-box;
+}
+
+/* ----- rail ----- */
+
+.acc-rail {
+  position: sticky;
+  top: 96px;
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  padding: 6px 0 6px 6px;
+  color: #ffffff;
+}
+
+.acc-rail svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The sliding light tab: it covers the active item and runs on into the
+   container, with two inward-curved corners where it meets it. */
+.acc-tab {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  left: 6px;
+  right: calc(-1 * var(--acc-gap) - 2px);
+  border-radius: 18px 0 0 18px;
+  background: var(--acc-paper);
+  pointer-events: none;
+  transition: transform 520ms var(--acc-ease), height 520ms var(--acc-ease);
+}
+
+.acc-tab::before,
+.acc-tab::after {
+  content: "";
+  position: absolute;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+}
+
+/* Each corner overlaps the tab by 1px, so no seam can show between them. */
+.acc-tab::before {
+  bottom: calc(100% - 1px);
+  height: 19px;
+  background: radial-gradient(circle at 0 0, transparent 18px, var(--acc-paper) 18.6px);
+}
+
+.acc-tab::after {
+  top: calc(100% - 1px);
+  height: 19px;
+  background: radial-gradient(circle at 0 100%, transparent 18px, var(--acc-paper) 18.6px);
+}
+
+/* ----- user ----- */
+
+.acc-user {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-right: 6px;
+  padding: 10px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.acc-user-avatar {
+  position: relative;
+  display: block;
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--acc-orange), 0 0 0 5px rgba(228, 102, 48, 0.2);
+}
+
+.acc-user-avatar img,
+.acc-user-avatar svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.acc-user-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 1px;
+}
+
+.acc-user-text strong {
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.acc-user-text small {
+  color: #ffb48f;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.acc-user-edit {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  transition: background 220ms ease, transform 220ms var(--acc-ease);
+}
+
+.acc-user-edit:hover { background: var(--acc-orange); transform: rotate(-12deg); }
+.acc-user-edit svg { width: 16px; height: 16px; }
+
+/* ----- groups ----- */
+
+.acc-groups {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 16px;
+}
+
+.acc-group ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.acc-group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 8px;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.acc-group-title::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  margin-right: 6px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.acc-group.is-cabinet .acc-group-title { color: #ffb48f; }
+
+.acc-group a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 14px 0 12px;
+  border-radius: 18px 0 0 18px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 14.5px;
+  font-weight: 750;
+  text-decoration: none;
+  transition: color 300ms ease;
+}
+
+.acc-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.08);
+  transition: background 300ms ease, color 300ms ease, transform 300ms var(--acc-ease);
+}
+
+.acc-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: transform 300ms var(--acc-ease);
+}
+
+.acc-num {
+  color: rgba(255, 255, 255, 0.28);
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  transition: color 300ms ease;
+}
+
+.acc-group a:hover { color: #ffffff; }
+.acc-group a:hover .acc-label { transform: translateX(4px); }
+.acc-group a:hover .acc-icon { transform: rotate(-8deg); }
+
+.acc-group a.is-active { color: var(--acc-ink); }
+
+.acc-group a.is-active .acc-icon {
+  background: var(--acc-orange);
+  color: #ffffff;
+  box-shadow: 0 8px 16px rgba(228, 102, 48, 0.32);
+}
+
+.acc-group a.is-active .acc-num { color: var(--acc-orange); }
+.acc-group a.is-active:hover .acc-label { transform: none; }
+
+/* ----- add listing, settings, log out ----- */
+
+.acc-foot {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 10px;
+  margin-right: 6px;
+}
+
+.acc-add {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--acc-orange);
+  color: #ffffff;
+  font-size: 14.5px;
+  font-weight: 850;
+  text-decoration: none;
+  box-shadow: 0 14px 28px rgba(228, 102, 48, 0.34);
+  transition: transform 260ms var(--acc-ease), box-shadow 260ms ease;
+}
+
+/* A light glint runs across the button from time to time. */
+.acc-add::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 -60%;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: skewX(-18deg);
+  animation: acc-glint 4.5s ease-in-out infinite;
+}
+
+@keyframes acc-glint {
+  0%, 70% { left: -60%; }
+  100% { left: 130%; }
+}
+
+.acc-add:hover { transform: translateY(-2px); box-shadow: 0 18px 34px rgba(228, 102, 48, 0.42); }
+.acc-add svg { stroke-width: 2.6; }
+
+.acc-foot-row {
+  display: flex;
+  gap: 6px;
+}
+
+.acc-foot-row a,
+.acc-foot-row button {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.7);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 220ms ease, color 220ms ease;
+}
+
+.acc-foot-row svg { width: 15px; height: 15px; }
+.acc-foot-row a:hover { background: rgba(255, 255, 255, 0.14); color: #ffffff; }
+.acc-foot-row a.is-active { background: var(--acc-paper); color: var(--acc-ink); }
+.acc-foot-row button:hover { background: rgba(239, 68, 68, 0.18); color: #fecaca; }
+
+/* ----- pages inside the shared container ----- */
+
+/* The settings page brings its own sub-menu; inside the container it drops its card look. */
+.acc-container .settings-shell {
+  width: 100%;
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 24px;
+  box-shadow: none;
+}
+
+/* ----- tablets and phones: the rail becomes a strip of tabs over the container ----- */
+
+@media (max-width: 1080px) {
+  .acc-shell { padding: 92px 14px 90px; }
+
+  .acc-frame {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .acc-rail {
+    position: relative;
+    top: 0;
+    display: block;
+    padding: 0;
+  }
+
+  .acc-tab,
+  .acc-user,
+  .acc-group-title,
+  .acc-num,
+  .acc-foot { display: none; }
+
+  .acc-groups {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    padding: 0 6px;
+    scrollbar-width: none;
+  }
+
+  .acc-groups::-webkit-scrollbar { display: none; }
+  .acc-group,
+  .acc-group ul { display: contents; }
+
+  .acc-group.is-cabinet li:first-child {
+    margin-left: 4px;
+    padding-left: 8px;
+    border-left: 1px solid rgba(255, 255, 255, 0.16);
+  }
+
+  /* Each item is a folder tab; the active one is the colour of the container
+     and sits right on top of it. */
+  .acc-group a {
+    min-height: 46px;
+    padding: 0 14px 0 8px;
+    border-radius: 16px 16px 0 0;
+    white-space: nowrap;
+  }
+
+  .acc-group a.is-active { background: var(--acc-paper); }
+  .acc-group a:hover .acc-label { transform: none; }
+  .acc-label { overflow: visible; }
+
+  .acc-container {
+    min-height: 0;
+    border-radius: 0 0 26px 26px;
+    padding: 20px 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .acc-rail *,
+  .acc-rail *::before,
+  .acc-rail *::after { transition: none !important; animation: none !important; }
+}
+
+.acc-loading {
+  width: 38px;
+  height: 38px;
+  margin: 80px auto;
+  border: 3px solid rgba(228, 102, 48, 0.2);
+  border-top-color: #e46630;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}

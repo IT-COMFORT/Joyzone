@@ -2,34 +2,16 @@ import React, { useEffect } from "react";
 import { propertyCards } from "../../data/content.js";
 import { getAvailabilityDayStatus } from "../../utils/availability.js";
 import { normalizePlace } from "../../utils/placeMapper.js";
-import { formatBookingDate, normalizeBooking as normalizeBookingContract } from "../../utils/bookingMapper.js";
+import { normalizeBooking as normalizeBookingContract } from "../../utils/bookingMapper.js";
+import { formatDayMonth, formatMonthYear } from "../../utils/localeDate.js";
+import { useText } from "../../context/LanguageContext.jsx";
 
 export const pageMeta = {
-  today: {
-    eyebrow: "Рабочий день",
-    title: "Сегодня в Joyzone",
-    text: "Брони, быстрые задачи и статусы пространств на ближайшие часы."
-  },
-  calendar: {
-    eyebrow: "График и цены",
-    title: "Управляйте доступностью",
-    text: "Меняйте цены, скидки и свободные дни без лишних переходов."
-  },
-  listings: {
-    eyebrow: "Портфель пространств",
-    title: "Ваши места",
-    text: "Следите за статусом объявлений и быстро добавляйте новые пространства."
-  },
-  messages: {
-    eyebrow: "Диалоги",
-    title: "Сообщения резидентов",
-    text: "Отвечайте командам, уточняйте детали брони и держите историю рядом."
-  },
-  tariffs: {
-    eyebrow: "Платформа",
-    title: "Тарифные планы",
-    text: "Выберите тарифный план для увеличения лимитов объявлений и доступа к premium-функциям."
-  }
+  today: "host_today",
+  calendar: "host_calendar",
+  listings: "host_listings",
+  messages: "host_messages",
+  tariffs: "host_tariffs",
 };
 
 export const navIndex = {
@@ -97,9 +79,8 @@ export function buildHostCalendarDays(year, month, availability, priceLabel = ""
   return days;
 }
 
-export function formatCalendarMonthTitle(year, month) {
-  return new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric" })
-    .format(new Date(Date.UTC(year, month, 1)));
+export function formatCalendarMonthTitle(year, month, lang = "uz") {
+  return formatMonthYear(new Date(year, month, 1), lang);
 }
 
 export function formatMoneyShort(value) {
@@ -118,23 +99,48 @@ export function buildHostListingView(place = {}, index = 0) {
   };
 }
 
-export function buildHostBookingView(booking = {}, listingsById = new Map()) {
+const STATUS_TEXT = {
+  confirmed: "status_confirmed",
+  completed: "status_completed",
+  blocked: "cal_closed_owner",
+  cancelled: "status_cancelled",
+};
+
+// bookingMapper's stand-in when a booking has no client; the admin panel shows it as is.
+const NO_CLIENT_NAME = "Клиент Joyzone";
+
+export function buildHostBookingView(booking = {}, listingsById = new Map(), t = (key) => key, lang = "uz") {
   const normalized = normalizeBookingContract(booking, { listingsById });
+  const startDate = new Date(normalized.start_time || normalized.start_date);
+  const named = (value) => (value === NO_CLIENT_NAME ? t("host_client") : value);
   return {
     ...normalized,
-    date: formatBookingDate(normalized.start_time || normalized.start_date),
-    statusLabel: normalized.status === "confirmed"
-      ? "Подтверждено"
-      : normalized.status === "completed"
-        ? "Завершено"
-        : normalized.status === "blocked"
-          ? "Закрыто владельцем"
-          : normalized.status === "cancelled"
-            ? "Отменено"
-            : "Ожидает подтверждения",
-    guests: `${normalized.guests || 1} человек`,
-    note: normalized.note || "Без заметки",
+    client_name: named(normalized.client_name),
+    company: named(normalized.company),
+    date: Number.isNaN(startDate.getTime()) ? "" : formatDayMonth(startDate, lang),
+    statusLabel: t(STATUS_TEXT[normalized.status] || "status_pending"),
+    durationText: t(`duration_${normalized.duration_type || "daily"}`),
+    guests: t("host_guests", { n: normalized.guests || 1 }),
+    ownerNote: normalized.note || "",
+    note: normalized.note || t("host_no_note"),
   };
+}
+
+// Tariffs keep Uzbek in the plain field, the other languages in _ru / _en.
+export function tariffText(tariff, field, lang) {
+  if (!tariff) return "";
+  return (lang === "uz" ? tariff[field] : tariff[`${field}_${lang}`]) || tariff[field] || tariff[`${field}_ru`] || "";
+}
+
+export function tariffFeatures(tariff, lang) {
+  const lists = [lang === "uz" ? tariff.features : tariff[`features_${lang}`], tariff.features, tariff.features_ru];
+  return lists.find((list) => Array.isArray(list) && list.length) || [];
+}
+
+// Discount descriptions exist only in Russian, so other languages show the name alone.
+export function discountText(discount, field, lang) {
+  if (field === "description") return lang === "ru" ? discount.description_ru || "" : "";
+  return discount[`name_${lang}`] || discount.name_ru || "";
 }
 
 export function filterPartnerChats(chats = [], listings = [], partnerId = null) {
@@ -193,38 +199,6 @@ export function DashboardIcon({ type }) {
         <path key={path} d={path} />
       ))}
     </svg>
-  );
-}
-
-export function DashboardHero({ page, profile }) {
-  const meta = pageMeta[page] || pageMeta.today;
-  const rawTariff = profile?.tariff_details?.slug || "";
-  const tariffName = profile?.tariff_details 
-    ? (profile.tariff_details.name_ru || profile.tariff_details.name) 
-    : "Standard";
-    
-  let badgeClass = "host-tariff-badge host-tariff-badge--standard";
-  if (rawTariff === "premium") {
-    badgeClass = "host-tariff-badge host-tariff-badge--premium";
-  } else if (rawTariff === "comfort") {
-    badgeClass = "host-tariff-badge host-tariff-badge--comfort";
-  }
-
-  return (
-    <section className="host-dashboard-hero">
-      <div>
-        <span>{meta.eyebrow}</span>
-        <h1>{meta.title}</h1>
-        <p>{meta.text}</p>
-      </div>
-      <div className="host-dashboard-status">
-        <div className="host-dashboard-status-title">
-          <strong>Joyzone host</strong>
-          <span className={badgeClass}>{tariffName}</span>
-        </div>
-        <small>Активность кабинета: высокая</small>
-      </div>
-    </section>
   );
 }
 

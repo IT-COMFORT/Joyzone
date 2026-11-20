@@ -1,10 +1,12 @@
 import { filterPartnerChats, EmptyPanel } from "./shared.jsx";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { getApiErrorMessage } from "../../api/client.js";
-import { getMessageSender, getStoredChats, markChatRead, sendMessageToChat, syncChatsWithBackend } from "../../utils/chatManager.js";
+import { useText } from "../../context/LanguageContext.jsx";
+import { CHAT_EMPTY_PREVIEW, getMessageSender, getStoredChats, markChatRead, sendMessageToChat, syncChatsWithBackend } from "../../utils/chatManager.js";
 import { useVisiblePolling } from "../../utils/polling.js";
 
 export function MessagesPage({ listings = [], partnerId = null }) {
+  const { t, lang } = useText();
   const [chats, setChats] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
   const [draft, setDraft] = useState("");
@@ -21,14 +23,14 @@ export function MessagesPage({ listings = [], partnerId = null }) {
       setUsingOfflineFallback(false);
       setMessageError("");
     } catch (err) {
-      setMessageError(getApiErrorMessage(err, "Не удалось загрузить inbox"));
+      setMessageError(getApiErrorMessage(err, t("msg_err_load"), lang));
       // Dev fallback keeps the partner inbox inspectable while the REST chat API is unavailable.
       setChats(import.meta.env.DEV ? filterPartnerChats(getStoredChats(), listings, partnerId) : []);
       setUsingOfflineFallback(import.meta.env.DEV);
     } finally {
       setInboxLoading(false);
     }
-  }, [listings, partnerId]);
+  }, [listings, partnerId, t, lang]);
 
   useEffect(() => {
     refreshChats();
@@ -72,7 +74,7 @@ export function MessagesPage({ listings = [], partnerId = null }) {
       }
       setMessageError("");
     } catch (err) {
-      setMessageError(getApiErrorMessage(err, "Не удалось отметить чат прочитанным"));
+      setMessageError(getApiErrorMessage(err, t("msg_err_read"), lang));
     }
   };
 
@@ -85,7 +87,7 @@ export function MessagesPage({ listings = [], partnerId = null }) {
       setMessageError("");
       await refreshChats();
     } catch (err) {
-      setMessageError(getApiErrorMessage(err, "Не удалось отправить сообщение"));
+      setMessageError(getApiErrorMessage(err, t("msg_err_send"), lang));
     } finally {
       setSending(false);
     }
@@ -112,14 +114,14 @@ export function MessagesPage({ listings = [], partnerId = null }) {
       <aside className="host-inbox-panel">
         <div className="host-section-head compact">
           <div>
-            <span>{usingOfflineFallback ? "Входящие · DEV offline fallback" : "Входящие"}</span>
-            <h2>Чаты</h2>
+            <span>{t("msg_inbox")}{usingOfflineFallback ? " · DEV offline fallback" : ""}</span>
+            <h2>{t("msg_chats")}</h2>
             {messageError ? <small style={{ color: "#dc2626", fontWeight: 800 }}>{messageError}</small> : null}
           </div>
         </div>
         <div className="host-inbox-list">
           {inboxLoading ? (
-            <p style={{ color: "#64748b", fontSize: 14 }}>Загрузка чатов...</p>
+            <p style={{ color: "#64748b", fontSize: 14 }}>{t("msg_loading")}</p>
           ) : chats.length > 0 ? chats.map((chat) => (
             <button key={chat.id} type="button" className={chat.id === selectedChat ? "is-active" : ""} onClick={() => handleSelectChat(chat)}>
               <span style={chat.guestAvatar ? { overflow: "hidden", padding: 0 } : undefined}>
@@ -128,13 +130,13 @@ export function MessagesPage({ listings = [], partnerId = null }) {
               <div>
                 <strong>{chat.name}</strong>
                 <small>{chat.space}</small>
-                <p>{chat.preview}</p>
+                <p>{chat.preview === CHAT_EMPTY_PREVIEW ? t("chat_started") : chat.preview}</p>
               </div>
               <em>{chat.time}</em>
               {chat.unread ? <i /> : null}
             </button>
           )) : (
-            <EmptyPanel title="Диалогов по вашим местам нет" text="Сообщения появятся здесь, когда гости напишут по одному из ваших объектов." />
+            <EmptyPanel title={t("msg_empty_title")} text={t("msg_empty_text")} />
           )}
         </div>
       </aside>
@@ -143,14 +145,14 @@ export function MessagesPage({ listings = [], partnerId = null }) {
         {activeChat ? (
           <>
             <div className="host-chat-head">
-              <button className="mobile-chat-back" onClick={() => setSelectedChat(null)} aria-label="Назад к чатам">
+              <button className="mobile-chat-back" onClick={() => setSelectedChat(null)} aria-label={t("msg_back")}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
               </button>
               <div>
                 <span>{activeChat.space}</span>
                 <h2>{activeChat.name}</h2>
               </div>
-              <a href="/host-calendar" className="desktop-only-link">Открыть бронь</a>
+              <a href="/host-calendar" className="desktop-only-link">{t("msg_open_booking")}</a>
             </div>
             <div className="host-chat-body" ref={chatBodyRef}>
               {activeChat.messages.map((message, index) => (
@@ -162,7 +164,7 @@ export function MessagesPage({ listings = [], partnerId = null }) {
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><path d="M10.5 14.5c-.8 0-1.5-.7-1.5-1.5v-2c0-.8.7-1.5 1.5-1.5s1.5.7 1.5 1.5"/><path d="M14 9h2v6h-2z"/><path d="M18 9v6"/><path d="M18 12h2"/></svg>
               </button>
               <input 
-                placeholder="Напишите сообщение..." 
+                placeholder={t("msg_placeholder")}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -173,14 +175,14 @@ export function MessagesPage({ listings = [], partnerId = null }) {
                 className={`composer-icon-btn send-btn ${draft.trim() ? "active" : ""}`} 
                 onClick={handleSend}
                 disabled={sending || usingOfflineFallback || !draft.trim()}
-                aria-label="Отправить"
+                aria-label={t("msg_send")}
               >
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
               </button>
             </div>
           </>
         ) : (
-          <EmptyPanel title="Выберите диалог" text="Слева показаны резиденты и команды. После выбора здесь откроется переписка." />
+          <EmptyPanel title={t("msg_pick_title")} text={t("msg_pick_text")} />
         )}
       </section>
     </section>

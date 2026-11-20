@@ -232,10 +232,10 @@
   flex: 1 1 auto;
   margin: 0;
   color: var(--variant-navy);
-  font-size: clamp(14px, 1.08vw, 18px);
-  font-weight: 950;
-  line-height: 1.15;
-  letter-spacing: 0;
+  font-size: clamp(14px, 1.08vw, 17px);
+  font-weight: 750;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
 }
 
 .variant-card p {
@@ -244,6 +244,14 @@
   font-size: 12px;
   font-weight: 750;
   line-height: 1.3;
+}
+
+/* The address is secondary: regular weight, softer colour. */
+.variant-card .variant-body > p {
+  color: rgba(18, 40, 63, 0.55);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.4;
 }
 
 .variant-card strong {
@@ -570,9 +578,72 @@
   flex-shrink: 0;
 }
 
+/* Title and price start on the same line; the price no longer floats in
+   the middle of a two-line title. */
+.variant-card .variant-title-row {
+  align-items: flex-start;
+  gap: 14px;
+}
+
+/* Grid card body in two clean rows: title | price, then address | period
+   ("kunlik"). The address now sits right under the title whether the title
+   has one line or two, instead of under the taller price block. */
+.variant-card:not(.is-list-view) .variant-body:has(> .variant-title-row) {
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 14px;
+  row-gap: 4px;
+}
+
+.variant-card:not(.is-list-view) .variant-body > .variant-title-row,
+.variant-card:not(.is-list-view) .variant-body > .variant-title-row > .variant-price-block {
+  display: contents;
+}
+
+.variant-card:not(.is-list-view) .variant-body > .variant-title-row > h3 {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.variant-card:not(.is-list-view) .variant-price-block > strong {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+}
+
+.variant-card:not(.is-list-view) .variant-body > p {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.variant-card:not(.is-list-view) .variant-price-block > .variant-price-label {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: center;
+  justify-self: end;
+  margin-top: 0;
+}
+
+.variant-card:not(.is-list-view) .variant-body > .variant-spec-row {
+  grid-column: 1 / -1;
+  align-self: end;
+  margin-top: 4px;
+}
+
+/* When a neighbour in the row is taller, the extra height goes under the
+   text (chips stay at the bottom), never between the photo and the title. */
+.variant-card:not(.is-list-view):has(> .variant-body > .variant-title-row) {
+  grid-template-rows: auto 1fr;
+}
+
+.variant-card:not(.is-list-view) .variant-body:has(> .variant-title-row) {
+  grid-template-rows: auto auto 1fr;
+}
+
 .variant-title-row strong {
   color: #050d16;
   font-size: 15px;
+  font-weight: 800;
+  line-height: 1.3;
   white-space: nowrap;
 }
 
@@ -588,10 +659,10 @@
 }
 
 .variant-price-label {
-  font-size: 11px;
+  font-size: 11.5px;
   color: #e46630;
-  font-weight: 850;
-  margin-top: 2px;
+  font-weight: 500;
+  margin-top: 1px;
 }
 
 .is-duration-unavailable .variant-media {

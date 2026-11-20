@@ -6,10 +6,10 @@ const DEFAULT_DESCRIPTION = "Joyzone: Toshkentda ofis, kovorking, majlis va tadb
 const ROUTE_META = {
   home: { title: "Joyzone — ofis, kovorking va zallarni ijaraga olish" },
   filter: { title: "Ijaraga joylar katalogi", description: "Ofis, kovorking va zallar katalogi: narx, sig'im va qulayliklar bo'yicha filtrlang." },
-  partner: { title: "Joy qo'shish — hamkor bo'lish", description: "Ofis, kovorking yoki zalingizni Joyzone'ga joylashtiring va mijozlardan bron qabul qiling." },
+  partner: { title: "E'lon qo'shish", description: "Ofis, kovorking, zal, do'kon yoki omborni Joyzone'ga joylashtiring: ijaraga bering yoki soting." },
   "about-us": { title: "Biz haqimizda" },
   "mobile-info": { title: "Afzalliklar va savollar" },
-  "partner-guide": { title: "Hamkorlar qo'llanmasi" },
+  "partner-guide": { title: "E'lon joylash qo'llanmasi" },
   login: { title: "Kirish", robots: "noindex" },
   register: { title: "Ro'yxatdan o'tish", robots: "noindex" },
   forgot: { title: "Kirishni tiklash", robots: "noindex" },

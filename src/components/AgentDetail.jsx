@@ -116,12 +116,12 @@ function AgentDetail({ route, userState, setUserState }) {
     setError("");
     if (!/^\d+$/.test(partnerId)) {
       if (import.meta.env.DEV) setPartner(demoPartner(route));
-      else setError("Hamkor topilmadi.");
+      else setError("Agent topilmadi.");
       return undefined;
     }
     api.get(`/api/partners/${partnerId}/`, { skipAuth: true })
       .then((res) => { if (!cancelled) setPartner(res.data); })
-      .catch((err) => { if (!cancelled) setError(getApiErrorMessage(err, "Hamkor topilmadi.")); });
+      .catch((err) => { if (!cancelled) setError(getApiErrorMessage(err, "Agent topilmadi.")); });
     return () => { cancelled = true; };
   }, [partnerId, route]);
 
@@ -144,7 +144,7 @@ function AgentDetail({ route, userState, setUserState }) {
   const firstPlaceHref = agentSpaces[0]?.href || "/filter";
 
   useEffect(() => {
-    if (partner?.name) setPageMeta({ title: `${partner.name} — Joyzone hamkori`, description: partner.bio, image });
+    if (partner?.name) setPageMeta({ title: `${partner.name} — Joyzone agenti`, description: partner.bio, image });
   }, [partner, image]);
 
   const profileStats = [
@@ -180,7 +180,7 @@ function AgentDetail({ route, userState, setUserState }) {
             <img src={image} alt={agent.name} />
           </div>
           <div className="agent-hero-copy">
-            <p className="agent-kicker">Joyzone hamkori</p>
+            <p className="agent-kicker">Joyzone agenti</p>
             <h1>{agent.name}</h1>
             <p>{agent.service}</p>
             <div className="agent-hero-actions">

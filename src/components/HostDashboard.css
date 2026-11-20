@@ -1384,7 +1384,7 @@
 
 /* Telegram-style Edge-to-Edge Messages UI for Mobile */
 @media (max-width: 980px) {
-  .host-dashboard-container.is-messages-page {
+  .acc-container:has(.is-messages-page) {
     padding: 0 !important;
     background: transparent !important;
     border-radius: 0 !important;

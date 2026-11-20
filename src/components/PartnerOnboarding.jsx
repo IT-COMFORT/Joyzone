@@ -1,6 +1,8 @@
 import { Icon, Header, SelectionCard, CounterRow, resolveIconName } from "./partnerOnboarding/parts.jsx";
 import { AddressStep } from "./partnerOnboarding/AddressStep.jsx";
+import { PowSelect } from "./partnerOnboarding/PowSelect.jsx";
 import { PartnerWelcome } from "./partnerOnboarding/Welcome.jsx";
+import { pickLocalized, useOnboardingText } from "./partnerOnboarding/onboardingText.js";
 import React, { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import api, { getAccessToken, getApiErrorMessage, withUploadTimeout } from "../api/client.js";
@@ -24,40 +26,19 @@ const WIZARD_STEPS = [0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12];
 const SALE_WIZARD_STEPS = WIZARD_STEPS.filter(item => item !== 10 && item !== 12);
 const MIN_PHOTOS = 4;
 
-const STEP_META = {
-  1: { label: "Тип", title: "Что вы хотите разместить?", hint: "Выберите тип пространства — от него зависят форматы и удобства." },
-  2: { label: "Формат", title: "Выберите формат", hint: "Как именно клиенты будут пользоваться местом?" },
-  3: { label: "Адрес", title: "Где находится место?", hint: "Найдите адрес или поставьте точку на карте — клиенты увидят её на странице места.", tip: "Маркер можно перетащить мышкой." },
-  5: { label: "Фото", title: "Добавьте фотографии", hint: `Минимум ${MIN_PHOTOS} фото. Первое станет обложкой в поиске.`, tip: "Светлые горизонтальные фото рабочих мест и зон отдыха собирают больше броней." },
-  6: { label: "Название", title: "Как называется место?", hint: "Коротко и понятно: тип места и район или название бренда." },
-  7: { label: "Описание", title: "Опишите место", hint: "Заполните описание на трёх языках — сайт показывает его на языке клиента." },
-  8: { label: "Характеристики", title: "Основные характеристики", hint: "Сколько человек помещается и какая площадь." },
-  9: { label: "Удобства", title: "Что есть на месте?", hint: "Отметьте удобства — по ним клиенты фильтруют поиск." },
-  10: { label: "Бронь и часы", title: "Бронирование и часы работы", hint: "Решите, как принимать заявки, и укажите, когда место открыто." },
-  11: { label: "Цены", title: "Сколько стоит аренда?", hint: "Включите удобные форматы и укажите цену. Достаточно одного." },
-  12: { label: "Скидки", title: "Добавьте скидки", hint: "Необязательно, но скидки помогают получить первые брони быстрее." },
-};
-
-const DEAL_HINTS = { rent: "Аренда", sale: "Продажа", both: "Аренда и продажа" };
-
-const SALE_PRICE_META = { label: "Цена", title: "Цена продажи", hint: "Укажите полную стоимость объекта. Клиенты свяжутся с вами напрямую — бронирования не будет." };
-
 // Sections the owner can jump to while editing an existing place.
-const editSectionsFor = (steps) => steps.filter(item => item > 0).map(item => ({
+const editSectionsFor = (steps, t) => steps.filter(item => item > 0).map(item => ({
   step: item,
-  label: (item === 11 && steps === SALE_WIZARD_STEPS ? SALE_PRICE_META : STEP_META[item]).label,
+  label: (item === 11 && steps === SALE_WIZARD_STEPS ? t.salePrice : t.steps[item]).label,
 }));
 
-const BOOKING_MODES = [
-  { id: "request", title: "По запросу", text: "Вы подтверждаете каждую заявку сами в кабинете." },
-  { id: "instant", title: "Мгновенно", text: "Бронь подтверждается сразу, без вашего участия." },
-];
+const BOOKING_MODES = ["request", "instant"];
 
 const PRICE_TIERS = [
-  { id: "soatlik", label: "За час", hint: "Почасовая аренда", placeholder: "50 000" },
-  { id: "kunlik", label: "За день", hint: "С открытия до закрытия", placeholder: "250 000" },
-  { id: "haftalik", label: "За неделю", hint: "7 дней подряд", placeholder: "1 500 000" },
-  { id: "oylik", label: "За месяц", hint: "Долгосрочная аренда", placeholder: "5 000 000" },
+  { id: "soatlik", placeholder: "50 000" },
+  { id: "kunlik", placeholder: "250 000" },
+  { id: "haftalik", placeholder: "1 500 000" },
+  { id: "oylik", placeholder: "5 000 000" },
 ];
 
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => (
@@ -71,13 +52,6 @@ function digitsOnly(value) {
 function groupDigits(value) {
   const digits = digitsOnly(value);
   return digits ? Number(digits).toLocaleString("ru-RU") : "";
-}
-
-function formatCount(count) {
-  const mod10 = count % 10;
-  const mod100 = count % 100;
-  const word = mod10 === 1 && mod100 !== 11 ? "формат" : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) ? "формата" : "форматов";
-  return `${count} ${word}`;
 }
 
 function paramIconName(param) {
@@ -96,6 +70,10 @@ export default function PartnerOnboardingPage() {
 
 function PartnerOnboarding({ initialEditId = null }) {
   const account = useAccountRole();
+  const { t, lang } = useOnboardingText();
+  // Async callbacks read the current texts through a ref.
+  const textRef = useRef(t);
+  textRef.current = t;
   const [step, setStep] = useState(0);
   const [categories, setCategories] = useState([]);
   const [categoriesError, setCategoriesError] = useState(null);
@@ -158,7 +136,7 @@ function PartnerOnboarding({ initialEditId = null }) {
         headers: { Authorization: `Bearer ${token}` }
       })
       .then(res => setProfile(res.data))
-      .catch(err => showToast(getApiErrorMessage(err, "Не удалось загрузить профиль партнёра"), "error"));
+      .catch(err => showToast(getApiErrorMessage(err, textRef.current.profileError), "error"));
     }
 
     api.get("/api/categories/", { skipAuth: true })
@@ -167,7 +145,7 @@ function PartnerOnboarding({ initialEditId = null }) {
          setCategoriesError(null);
       })
       .catch(err => {
-         setCategoriesError(getApiErrorMessage(err, "Не удалось загрузить категории"));
+         setCategoriesError(getApiErrorMessage(err, textRef.current.categoriesError));
       });
       
     api.get("/api/parameters/", { skipAuth: true })
@@ -263,7 +241,7 @@ function PartnerOnboarding({ initialEditId = null }) {
         setEditLoading(false);
       })
       .catch(err => {
-        showToast(getApiErrorMessage(err, "Не удалось загрузить место для редактирования"), "error");
+        showToast(getApiErrorMessage(err, textRef.current.editLoadError), "error");
         const returnHash = getStorageItem(STORAGE_KEYS.workflow.editPlaceReturnHash);
         removeStorageItem(STORAGE_KEYS.workflow.editPlaceReturnHash);
         setEditPlaceId(null);
@@ -329,7 +307,7 @@ function PartnerOnboarding({ initialEditId = null }) {
   };
 
   const handleNext = () => {
-    const errors = validateOnboardingStep(step, getFormData());
+    const errors = validateOnboardingStep(step, getFormData(), lang);
     if (errors.length > 0) {
       setStepErrors(prev => ({ ...prev, [step]: errors.map(item => item.message) }));
       focusDescriptionError(errors);
@@ -353,7 +331,7 @@ function PartnerOnboarding({ initialEditId = null }) {
     const availableSlots = Math.max(0, 10 - photos.length);
     const acceptedFiles = files.slice(0, availableSlots);
     if (acceptedFiles.length < files.length) {
-      showToast("Для одного объекта можно загрузить не более 10 фотографий.", "error");
+      showToast(t.tooManyPhotos, "error");
     }
     const newPhotos = acceptedFiles.map((file) => ({
       id: Math.random().toString(36).substring(7),
@@ -376,7 +354,7 @@ function PartnerOnboarding({ initialEditId = null }) {
 
   const handleBooking = async ({ moderationConfirmed = false } = {}) => {
     const formData = getFormData();
-    const validationErrors = validateOnboarding(formData);
+    const validationErrors = validateOnboarding(formData, lang);
     if (validationErrors.length > 0) {
       const groupedErrors = groupOnboardingErrors(validationErrors);
       const firstStep = Math.min(...validationErrors.map(item => item.step));
@@ -395,7 +373,7 @@ function PartnerOnboarding({ initialEditId = null }) {
     setModerationConfirmOpen(false);
     setSubmitting(true);
     try {
-      showToast("Загрузка фотографий и отправка объекта...", "info");
+      showToast(t.uploading, "info");
       
       // 1. Upload images to backend
       const uploadedImageUrls = [];
@@ -434,20 +412,20 @@ function PartnerOnboarding({ initialEditId = null }) {
 
       const shouldBecomePending = !editId || !isPrivilegedEditor;
       if (shouldBecomePending && response.data?.status !== "pending") {
-        throw new Error("Backend не вернул ожидаемый статус pending.");
+        throw new Error(t.badStatus);
       }
 
       if (editId) {
         setEditPlaceId(null);
         if (requiresRemoderationConfirmation) {
-          showToast("Объект отправлен на повторную модерацию.", "success");
+          showToast(t.sentRemoderation, "success");
         } else if (isPrivilegedEditor) {
-          showToast("Изменения объекта сохранены.", "success");
+          showToast(t.savedChanges, "success");
         } else {
-          showToast("Объект обновлён и отправлен на модерацию.", "success");
+          showToast(t.updatedModeration, "success");
         }
       } else {
-        showToast("Объект успешно отправлен на модерацию!", "success");
+        showToast(t.sentModeration, "success");
       }
       
       const returnHash = getStorageItem(STORAGE_KEYS.workflow.editPlaceReturnHash);
@@ -461,7 +439,7 @@ function PartnerOnboarding({ initialEditId = null }) {
         }, 500);
       }, 2000);
     } catch(err) {
-      const backendErrors = mapPlaceApiErrors(err.response?.data);
+      const backendErrors = mapPlaceApiErrors(err.response?.data, lang);
       if (backendErrors.length > 0) {
         const groupedErrors = groupOnboardingErrors(backendErrors);
         const firstStep = Math.min(...backendErrors.map(item => item.step));
@@ -470,7 +448,7 @@ function PartnerOnboarding({ initialEditId = null }) {
         focusDescriptionError(backendErrors.filter(item => item.step === firstStep));
         showToast(backendErrors[0].message, "error");
       } else {
-        showToast("Ошибка при публикации: " + getApiErrorMessage(err, "Не удалось сохранить место"), "error");
+        showToast(t.publishError + getApiErrorMessage(err, t.saveFailed), "error");
       }
     } finally {
       setSubmitting(false);
@@ -498,11 +476,11 @@ function PartnerOnboarding({ initialEditId = null }) {
   }, [step]);
 
   const saveLabel = isEditing
-    ? (submitting ? "Сохраняем..." : <>Сохранить<span className="pow-hide-mobile"> изменения</span></>)
-    : (submitting ? "Публикация..." : "Опубликовать");
+    ? (submitting ? t.saving : <>{t.save}<span className="pow-hide-mobile">{t.saveChanges}</span></>)
+    : (submitting ? t.publishing : t.publish);
 
   const stepNumber = wizardSteps.indexOf(step);
-  const stepMeta = (isSale && step === 11 ? SALE_PRICE_META : STEP_META[step]) || {};
+  const stepMeta = (isSale && step === 11 ? t.salePrice : t.steps[step]) || {};
   const filledLangs = { ru: descRu.trim(), uz: descUz.trim(), en: descEn.trim() };
   const visibleDiscounts = apiDiscounts.filter(d => (
     d.is_active && (d.applicable_to === "all" || d.category_ids?.includes(objectType) || selectedDiscountIds.includes(d.id))
@@ -522,7 +500,7 @@ function PartnerOnboarding({ initialEditId = null }) {
 
   const renderCopy = () => (
     <div className="pow-copy">
-      <span className="pow-eyebrow">Шаг {stepNumber} из {wizardSteps.length - 1} · {stepMeta.label}</span>
+      <span className="pow-eyebrow">{t.stepOf(stepNumber, wizardSteps.length - 1)} · {stepMeta.label}</span>
       <h1>{stepMeta.title}</h1>
       {stepMeta.hint ? <p>{stepMeta.hint}</p> : null}
       {stepErrors[step]?.length > 0 ? (
@@ -539,13 +517,13 @@ function PartnerOnboarding({ initialEditId = null }) {
     if (step === 1) {
       return (
         <div className="pow-choice-grid">
-          {categories.length === 0 && !categoriesError ? <p className="pow-muted">Загрузка...</p> : null}
-          {categoriesError ? <p className="pow-field-error">Ошибка: {categoriesError}</p> : null}
+          {categories.length === 0 && !categoriesError ? <p className="pow-muted">{t.loading}</p> : null}
+          {categoriesError ? <p className="pow-field-error">{t.errorPrefix}{categoriesError}</p> : null}
           {categories.map(c => (
             <SelectionCard
               key={c.id}
               item={c}
-              hint={`${DEAL_HINTS[c.deal_types] || DEAL_HINTS.rent} · ${formatCount(c.subcategories?.length || 0)}`}
+              hint={`${t.deals[c.deal_types] || t.deals.rent} · ${t.formatCount(c.subcategories?.length || 0)}`}
               active={objectType === c.id}
               onClick={() => { setObjectType(c.id); setAccessType(null); }}
             />
@@ -558,8 +536,8 @@ function PartnerOnboarding({ initialEditId = null }) {
       return (
         <div className="pow-stack">
         {allowedDeals.length > 1 ? (
-          <div className="pow-deal-switch" role="radiogroup" aria-label="Тип сделки">
-            {[["rent", "Сдаю в аренду", "Бронь по часам, дням или месяцам"], ["sale", "Продаю", "Одна цена, клиенты звонят вам"]].map(([value, title, text]) => (
+          <div className="pow-deal-switch" role="radiogroup" aria-label={t.dealAria}>
+            {[["rent", ...t.dealRent], ["sale", ...t.dealSale]].map(([value, title, text]) => (
               <button
                 key={value}
                 type="button"
@@ -576,12 +554,12 @@ function PartnerOnboarding({ initialEditId = null }) {
           </div>
         ) : null}
         <div className="pow-choice-grid">
-          {!selectedCategory ? <p className="pow-muted">Сначала выберите тип объекта.</p> : null}
+          {!selectedCategory ? <p className="pow-muted">{t.pickTypeFirst}</p> : null}
           {selectedCategory?.subcategories?.map(s => (
             <SelectionCard
               key={s.id}
               item={s}
-              hint={selectedCategory.name_ru}
+              hint={pickLocalized(selectedCategory, lang)}
               active={accessType === s.id}
               onClick={() => setAccessType(s.id)}
             />
@@ -609,24 +587,24 @@ function PartnerOnboarding({ initialEditId = null }) {
             <input data-testid="onboarding-photos" type="file" accept="image/*" multiple onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
             <span className="pow-dropzone-icon"><Icon name="upload" /></span>
             <span>
-              <strong>Добавить фотографии</strong>
-              <small>Нажмите или перетащите файлы · JPG, PNG · до 10 фото</small>
+              <strong>{t.addPhotos}</strong>
+              <small>{t.addPhotosHint}</small>
             </span>
           </label>
           <div className="pow-photo-status">
             <div className="pow-meter"><i style={{ width: `${Math.min(100, (photos.length / MIN_PHOTOS) * 100)}%` }} /></div>
             <span className={missing ? "" : "is-done"}>
-              {missing ? `Загружено ${photos.length} из ${MIN_PHOTOS} — добавьте ещё ${missing}` : `Загружено ${photos.length} фото — достаточно`}
+              {missing ? t.photosMissing(photos.length, MIN_PHOTOS, missing) : t.photosDone(photos.length)}
             </span>
           </div>
           <div className="pow-photo-grid">
             {photos.map((p, i) => (
               <figure key={p.id} className={i === 0 ? "is-cover" : ""}>
                 <img src={p.url} alt="" />
-                {i === 0 ? <figcaption>Обложка</figcaption> : (
-                  <button type="button" className="pow-photo-cover" onClick={() => makeCover(p.id)}>Сделать обложкой</button>
+                {i === 0 ? <figcaption>{t.cover}</figcaption> : (
+                  <button type="button" className="pow-photo-cover" onClick={() => makeCover(p.id)}>{t.makeCover}</button>
                 )}
-                <button type="button" className="pow-photo-remove" aria-label="Удалить фото" onClick={() => setPhotos(photos.filter(pt => pt.id !== p.id))}>×</button>
+                <button type="button" className="pow-photo-remove" aria-label={t.removePhoto} onClick={() => setPhotos(photos.filter(pt => pt.id !== p.id))}>×</button>
               </figure>
             ))}
             {Array.from({ length: Math.max(0, MIN_PHOTOS - photos.length) }).map((_, i) => (
@@ -641,26 +619,26 @@ function PartnerOnboarding({ initialEditId = null }) {
       return (
         <div className="pow-stack">
           <label className="pow-field">
-            <span>Название <small>{spaceTitle.length}/50</small></span>
+            <span>{t.titleLabel} <small>{spaceTitle.length}/50</small></span>
             <input
               data-testid="onboarding-title"
               className="pow-input is-large"
               value={spaceTitle}
               maxLength={50}
-              placeholder="Например: Коворкинг на Юнусабаде"
+              placeholder={t.titlePh}
               onChange={e => setSpaceTitle(e.target.value)}
             />
           </label>
           <div className="pow-preview">
-            <span className="pow-preview-label">Так место увидят в поиске</span>
+            <span className="pow-preview-label">{t.previewLabel}</span>
             <article>
               <div className="pow-preview-img">
                 {photos[0] ? <img src={photos[0].url} alt="" /> : <Icon name="image" />}
               </div>
               <div>
-                <strong>{spaceTitle || "Название вашего места"}</strong>
-                <small><Icon name="pin" />{address ? address.split(",").slice(0, 2).join(",") : "Адрес не выбран"}</small>
-                <em>{selectedSubCategory?.name_ru || selectedCategory?.name_ru || "Категория"}</em>
+                <strong>{spaceTitle || t.titleFallback}</strong>
+                <small><Icon name="pin" />{address ? address.split(",").slice(0, 2).join(",") : t.noAddress}</small>
+                <em>{pickLocalized(selectedSubCategory, lang) || pickLocalized(selectedCategory, lang) || t.categoryFallback}</em>
               </div>
             </article>
           </div>
@@ -674,7 +652,7 @@ function PartnerOnboarding({ initialEditId = null }) {
       return (
         <div className="pow-stack">
           <div className="pow-tabs" role="tablist">
-            {[{ id: "ru", label: "Русский" }, { id: "uz", label: "O'zbekcha" }, { id: "en", label: "English" }].map(tab => (
+            {["uz", "ru", "en"].map(id => ({ id, label: t.descTabs[id] })).map(tab => (
               <button
                 key={tab.id}
                 type="button"
@@ -690,7 +668,7 @@ function PartnerOnboarding({ initialEditId = null }) {
             ))}
           </div>
           <label className="pow-field">
-            <span>Описание · {activeDescTab.toUpperCase()} <small>{descValue.length}/500</small></span>
+            <span>{t.descLabel} · {activeDescTab.toUpperCase()} <small>{descValue.length}/500</small></span>
             <textarea
               key={activeDescTab}
               data-testid={`onboarding-description-${activeDescTab}`}
@@ -698,7 +676,7 @@ function PartnerOnboarding({ initialEditId = null }) {
               rows={9}
               maxLength={500}
               value={descValue}
-              placeholder="Расскажите про атмосферу, оборудование, кому подойдёт место и что рядом."
+              placeholder={t.descPh}
               onChange={e => setDesc(e.target.value)}
             />
           </label>
@@ -711,32 +689,37 @@ function PartnerOnboarding({ initialEditId = null }) {
         <div className="pow-counter-grid">
           <div className="pow-counter-card">
             <span className="pow-counter-icon"><Icon name="users" /></span>
-            <CounterRow label="Вместимость, человек" value={Number(capacity) || 0} onChange={setCapacity} />
+            <CounterRow label={t.capacity} value={Number(capacity) || 0} onChange={setCapacity} />
           </div>
           <div className="pow-counter-card">
             <span className="pow-counter-icon"><Icon name="area" /></span>
             <label className="pow-area">
-              <span>Площадь</span>
+              <span>{t.area}</span>
               <span className="pow-suffix-input">
                 <input data-testid="onboarding-area" type="number" min="1" step="1" value={area} onChange={e => setArea(e.target.value)} placeholder="50" />
-                <small>м²</small>
+                <small>{t.sqm}</small>
               </span>
             </label>
           </div>
           {counterParams.map(p => (
             <div key={p.slug} className="pow-counter-card">
               <span className="pow-counter-icon"><Icon name={paramIconName(p)} /></span>
-              <CounterRow label={p.name_ru} value={Number(customCounters[p.slug]) || 0} onChange={val => setCustomCounters({ ...customCounters, [p.slug]: val })} />
+              <CounterRow label={pickLocalized(p, lang)} value={Number(customCounters[p.slug]) || 0} onChange={val => setCustomCounters({ ...customCounters, [p.slug]: val })} />
             </div>
           ))}
           {selectParams.map(p => (
-            <label key={p.slug} className="pow-counter-card pow-select-card">
-              <span>{p.name_ru}</span>
-              <select className="pow-input" value={customSelects[p.slug] || ""} onChange={e => setCustomSelects({ ...customSelects, [p.slug]: e.target.value })}>
-                <option value="">Не выбрано</option>
-                {(p.config?.options || []).map(opt => <option key={opt.slug} value={opt.slug}>{opt.ru}</option>)}
-              </select>
-            </label>
+            <div key={p.slug} className="pow-counter-card pow-select-card">
+              <span>{pickLocalized(p, lang)}</span>
+              <PowSelect
+                ariaLabel={pickLocalized(p, lang)}
+                value={customSelects[p.slug] || ""}
+                onChange={val => setCustomSelects({ ...customSelects, [p.slug]: val })}
+                options={[
+                  { value: "", label: t.notSelected },
+                  ...(p.config?.options || []).map(opt => ({ value: opt.slug, label: opt[lang] || opt.ru || opt.uz || opt.slug })),
+                ]}
+              />
+            </div>
           ))}
         </div>
       );
@@ -751,14 +734,14 @@ function PartnerOnboarding({ initialEditId = null }) {
               return (
                 <button type="button" key={p.slug} className={`pow-amenity ${isSel ? "is-selected" : ""}`} aria-pressed={isSel} onClick={() => toggleAmenity(p.slug)}>
                   <span className="pow-amenity-icon"><Icon name={paramIconName(p)} /></span>
-                  <strong>{p.name_ru}</strong>
+                  <strong>{pickLocalized(p, lang)}</strong>
                   <i aria-hidden="true" />
                 </button>
               );
             })}
           </div>
-          {booleanParams.length === 0 ? <p className="pow-muted">Для этого формата удобства не настроены — можно идти дальше.</p> : (
-            <p className="pow-muted">Выбрано: {amenities.filter(a => booleanParams.some(p => p.slug === a)).length} из {booleanParams.length}</p>
+          {booleanParams.length === 0 ? <p className="pow-muted">{t.noAmenities}</p> : (
+            <p className="pow-muted">{t.amenitiesPicked(amenities.filter(a => booleanParams.some(p => p.slug === a)).length, booleanParams.length)}</p>
           )}
         </div>
       );
@@ -768,31 +751,27 @@ function PartnerOnboarding({ initialEditId = null }) {
       return (
         <div className="pow-stack">
           <div className="pow-mode-grid">
-            {BOOKING_MODES.map(mode => (
-              <button key={mode.id} type="button" className={`pow-mode ${bookingType === mode.id ? "is-selected" : ""}`} onClick={() => setBookingType(mode.id)}>
-                <span className="pow-mode-icon"><Icon name={mode.id} /></span>
-                <strong>{mode.title}</strong>
-                <small>{mode.text}</small>
+            {BOOKING_MODES.map(id => (
+              <button key={id} type="button" className={`pow-mode ${bookingType === id ? "is-selected" : ""}`} onClick={() => setBookingType(id)}>
+                <span className="pow-mode-icon"><Icon name={id} /></span>
+                <strong>{t.bookingModes[id].title}</strong>
+                <small>{t.bookingModes[id].text}</small>
               </button>
             ))}
           </div>
           <div className="pow-hours">
-            <span className="pow-hours-title"><Icon name="clock" />Часы работы</span>
-            <label>
-              Открытие
-              <select data-testid="onboarding-opens-at" className="pow-input" value={opensAt} onChange={e => setOpensAt(e.target.value)}>
-                {TIME_OPTIONS.map(time => <option key={time} value={time}>{time}</option>)}
-              </select>
-            </label>
-            <label>
-              Закрытие
-              <select data-testid="onboarding-closes-at" className="pow-input" value={closesAt} onChange={e => setClosesAt(e.target.value)}>
-                {[...TIME_OPTIONS.slice(1), "23:59"].map(time => <option key={time} value={time}>{time}</option>)}
-              </select>
-            </label>
+            <span className="pow-hours-title"><Icon name="clock" />{t.hours}</span>
+            <div className="pow-hours-field">
+              <span>{t.opens}</span>
+              <PowSelect compact testId="onboarding-opens-at" ariaLabel={t.opens} value={opensAt} onChange={setOpensAt} options={TIME_OPTIONS.map(time => ({ value: time, label: time }))} />
+            </div>
+            <div className="pow-hours-field">
+              <span>{t.closes}</span>
+              <PowSelect compact testId="onboarding-closes-at" ariaLabel={t.closes} value={closesAt} onChange={setClosesAt} options={[...TIME_OPTIONS.slice(1), "23:59"].map(time => ({ value: time, label: time }))} />
+            </div>
           </div>
-          {closesAt <= opensAt ? <p className="pow-field-error">Время закрытия должно быть позже открытия.</p> : (
-            <p className="pow-muted">Почасовые брони доступны только в это время, дневные — с открытия до закрытия.</p>
+          {closesAt <= opensAt ? <p className="pow-field-error">{t.hoursError}</p> : (
+            <p className="pow-muted">{t.hoursHint}</p>
           )}
         </div>
       );
@@ -804,8 +783,8 @@ function PartnerOnboarding({ initialEditId = null }) {
         <div className="pow-stack">
           <div className="pow-price is-on pow-sale-price">
             <span className="pow-sale-price-label">
-              <strong>Стоимость объекта</strong>
-              <small>Полная цена продажи</small>
+              <strong>{t.objectPrice}</strong>
+              <small>{t.fullSalePrice}</small>
             </span>
             <span className="pow-suffix-input">
               <input
@@ -814,13 +793,13 @@ function PartnerOnboarding({ initialEditId = null }) {
                 placeholder="1 500 000 000"
                 value={groupDigits(salePrice)}
                 onChange={e => setSalePrice(digitsOnly(e.target.value))}
-                aria-label="Цена продажи"
+                aria-label={t.salePriceAria}
               />
-              <small>сум</small>
+              <small>{t.currency}</small>
             </span>
           </div>
           {perMeter > 0 ? (
-            <p className="pow-muted">≈ {groupDigits(String(perMeter))} сум за 1 м² при площади {area} м².</p>
+            <p className="pow-muted">{t.perMeter(groupDigits(String(perMeter)), area)}</p>
           ) : null}
         </div>
       );
@@ -843,8 +822,8 @@ function PartnerOnboarding({ initialEditId = null }) {
                 >
                   <i aria-hidden="true" />
                   <span>
-                    <strong>{tier.label}</strong>
-                    <small>{tier.hint}</small>
+                    <strong>{t.priceTiers[tier.id].label}</strong>
+                    <small>{t.priceTiers[tier.id].hint}</small>
                   </span>
                 </button>
                 <span className="pow-suffix-input">
@@ -852,12 +831,12 @@ function PartnerOnboarding({ initialEditId = null }) {
                     data-testid={`onboarding-price-${tier.id}`}
                     inputMode="numeric"
                     disabled={!isActive}
-                    placeholder={isActive ? tier.placeholder : "выключено"}
+                    placeholder={isActive ? tier.placeholder : t.priceOff}
                     value={isActive ? groupDigits(prices[tier.id]) : ""}
                     onChange={e => setPrices({ ...prices, [tier.id]: digitsOnly(e.target.value) })}
-                    aria-label={`Цена ${tier.label}`}
+                    aria-label={t.priceAria(t.priceTiers[tier.id].label)}
                   />
-                  <small>сум</small>
+                  <small>{t.currency}</small>
                 </span>
               </div>
             );
@@ -870,7 +849,7 @@ function PartnerOnboarding({ initialEditId = null }) {
       return (
         <div className="pow-stack">
           {visibleDiscounts.length === 0 ? (
-            <div className="pow-empty"><Icon name="tag" /><p>Для этой категории скидок пока нет — их добавляет администратор. Можно сохранять.</p></div>
+            <div className="pow-empty"><Icon name="tag" /><p>{t.noDiscounts}</p></div>
           ) : (
             <div className="pow-discount-list">
               {visibleDiscounts.map(discount => {
@@ -879,8 +858,8 @@ function PartnerOnboarding({ initialEditId = null }) {
                   <button key={discount.id} type="button" className={`pow-discount ${isActive ? "is-selected" : ""}`} aria-pressed={isActive} onClick={() => toggleDiscount(discount.id)}>
                     <b>−{discount.percent}%</b>
                     <span>
-                      <strong>{discount.name_ru}</strong>
-                      {discount.description_ru ? <small>{discount.description_ru}</small> : null}
+                      <strong>{pickLocalized(discount, lang)}</strong>
+                      {pickLocalized(discount, lang, "description") ? <small>{pickLocalized(discount, lang, "description")}</small> : null}
                     </span>
                     <i aria-hidden="true" />
                   </button>
@@ -888,7 +867,7 @@ function PartnerOnboarding({ initialEditId = null }) {
               })}
             </div>
           )}
-          <p className="pow-muted">Можно выбрать несколько — клиент получит одну, самую выгодную скидку.</p>
+          <p className="pow-muted">{t.discountsHint}</p>
         </div>
       );
     }
@@ -910,13 +889,13 @@ function PartnerOnboarding({ initialEditId = null }) {
     <main className={`partner-onboarding-page pow${isEditing ? " is-editing" : ""}${isWelcome ? " is-welcome" : ""}`}>
       <Header profile={profile} />
       {isEditing && !editLoading ? (
-        <nav className="pe-nav" aria-label="Разделы объявления">
+        <nav className="pe-nav" aria-label={t.editSections}>
           <div className="pe-nav-title">
-            <span>Редактирование</span>
-            <strong>{spaceTitle || "Объявление"}</strong>
+            <span>{t.editing}</span>
+            <strong>{spaceTitle || t.listingFallback}</strong>
           </div>
           <div className="pe-nav-steps">
-            {editSectionsFor(wizardSteps).map(item => (
+            {editSectionsFor(wizardSteps, t).map(item => (
               <button
                 key={item.step}
                 type="button"
@@ -925,7 +904,7 @@ function PartnerOnboarding({ initialEditId = null }) {
                 onClick={() => jumpToStep(item.step)}
               >
                 {item.label}
-                {stepErrors[item.step]?.length ? <i aria-label="есть ошибки" /> : null}
+                {stepErrors[item.step]?.length ? <i aria-label={t.hasErrors} /> : null}
               </button>
             ))}
           </div>
@@ -936,7 +915,7 @@ function PartnerOnboarding({ initialEditId = null }) {
         {editLoading && step === 0 ? (
           <div className="pe-loading" role="status">
             <span className="pe-spinner" aria-hidden="true" />
-            Загружаем объявление...
+            {t.editLoading}
           </div>
         ) : step === 0 ? (
           <PartnerWelcome onStart={startWizard} />
@@ -961,15 +940,15 @@ function PartnerOnboarding({ initialEditId = null }) {
                 disabled={submitting || (isEditing && stepNumber <= 1)}
                 onClick={goBack}
               >
-                <Icon name="chevronLeft" />Назад
+                <Icon name="chevronLeft" />{t.back}
               </button>
-              {isEditing ? <button type="button" className="pow-btn is-link" disabled={submitting} onClick={cancelEditing}>Отменить</button> : null}
+              {isEditing ? <button type="button" className="pow-btn is-link" disabled={submitting} onClick={cancelEditing}>{t.cancel}</button> : null}
             </div>
             <span className="pow-footer-step">{stepNumber} / {wizardSteps.length - 1}</span>
             <div className="pow-footer-right">
               {!isLastStep ? (
                 <button data-testid="onboarding-next" type="button" className={`pow-btn ${isEditing ? "is-outline" : "is-primary"}`} disabled={submitting} onClick={handleNext}>
-                  Далее<Icon name="chevronRight" />
+                  {t.next}<Icon name="chevronRight" />
                 </button>
               ) : null}
               {isEditing || isLastStep ? (
@@ -992,21 +971,18 @@ function PartnerOnboarding({ initialEditId = null }) {
             onClick={(event) => event.stopPropagation()}
           >
             <div className="partner-moderation-confirm-icon" aria-hidden="true">!</div>
-            <h2 id="partner-moderation-confirm-title">Отправить изменения на модерацию?</h2>
-            <p>
-              После сохранения опубликованное место временно станет недоступно на публичных страницах
-              и будет отправлено на повторную модерацию. Оно снова появится после одобрения.
-            </p>
+            <h2 id="partner-moderation-confirm-title">{t.confirmTitle}</h2>
+            <p>{t.confirmText}</p>
             <div className="partner-moderation-confirm-actions">
               <button type="button" className="partner-back" onClick={() => setModerationConfirmOpen(false)}>
-                Отмена
+                {t.confirmCancel}
               </button>
               <button
                 type="button"
                 className="partner-next is-publish"
                 onClick={() => handleBooking({ moderationConfirmed: true })}
               >
-                Сохранить и отправить
+                {t.confirmSend}
               </button>
             </div>
           </div>

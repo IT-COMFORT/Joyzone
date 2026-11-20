@@ -7,6 +7,8 @@
 // audience: "guest" marks texts only signed-out visitors see; the admin
 // preview then shows the site as a guest.
 
+import { authExtraSections, cabinetSections } from "./cabinetTexts.js";
+
 const ICON_FIELD = {
   name: "icon",
   label: "Иконка",
@@ -45,6 +47,8 @@ export const CONTENT_SCHEMA = [
         fields: [
           { key: "menu_about_label", label: "01 · О нас — название", type: "text" },
           { key: "menu_about_desc", label: "01 · О нас — подпись", type: "text" },
+          { key: "menu_about_company_label", label: "01 → О нас", type: "text", hint: "Первый подпункт внутри «О нас»." },
+          { key: "menu_about_company_desc", label: "01 → О нас — подпись", type: "text" },
           { key: "menu_about_info_label", label: "01 → Преимущества и FAQ", type: "text", hint: "Подпункт внутри «О нас»." },
           { key: "menu_about_info_desc", label: "01 → Преимущества и FAQ — подпись", type: "text" },
           { key: "menu_about_guide_label", label: "01 → Гид для партнёров", type: "text" },
@@ -86,7 +90,6 @@ export const CONTENT_SCHEMA = [
           { key: "menu_guest_text", audience: "guest", label: "Текст для гостя", type: "textarea", hint: "Внизу открытого меню, когда гость не вошёл." },
           { key: "menu_register", audience: "guest", label: "Кнопка «Регистрация»", type: "text", hint: "Внизу открытого меню, когда гость не вошёл." },
           { key: "menu_cabinet_link", label: "Кнопка «В кабинет»", type: "text", hint: "Видна, когда пользователь вошёл." },
-          { key: "menu_partner_tag", label: "Промо партнёрам: метка", type: "text" },
           { key: "menu_partner_title", label: "Промо партнёрам: заголовок", type: "text" },
           { key: "menu_partner_text", label: "Промо партнёрам: текст", type: "textarea" },
           { key: "menu_partner_cta", label: "Промо партнёрам: кнопка", type: "text" },
@@ -154,7 +157,6 @@ export const CONTENT_SCHEMA = [
         title: "Как это работает",
         where: "Тёмный блок с переключателем «Для клиентов / Для партнёров», анимированной инструкцией и шагами 01–03.",
         fields: [
-          { key: "how_demo_label", label: "Подпись под демо-экраном", type: "text", hint: "Показывается, когда видео не добавлено." },
           { key: "how_video_label", label: "Кнопка видео", type: "text" },
           { key: "how_tab_guest", label: "Клиенты — вкладка", type: "text" },
           { key: "how_guest_title", label: "Клиенты — заголовок", type: "text", hint: "Число и следующее слово выделяются оранжевым (например «3 qadamda»)." },
@@ -326,7 +328,16 @@ export const CONTENT_SCHEMA = [
           { key: "auth_verify_resend", path: "/verify", label: "Ссылка «Отправить снова»", type: "text", hint: "Текст после «?» становится ссылкой." },
         ],
       },
+      ...authExtraSections,
     ],
+  },
+  {
+    id: "cabinet",
+    title: "Кабинет",
+    icon: "users",
+    path: "/profile",
+    description: "Профиль, настройки и кабинет партнёра: всё, что пользователь видит после входа.",
+    sections: cabinetSections,
   },
   {
     id: "about",
@@ -345,22 +356,15 @@ export const CONTENT_SCHEMA = [
         ],
       },
       {
-        title: "Цифры и ценности",
-        where: "Ряд с цифрами и карточки ценностей под первым экраном.",
+        title: "Ценности",
+        where: "Карточки ценностей. Цифры над ними считаются сами из базы.",
         fields: [
-          {
-            key: "about_stats_arr", label: "Цифры", type: "list", itemLabel: "Цифра",
-            itemFields: [
-              { name: "value", label: "Значение" },
-              { name: "label", label: "Подпись" },
-            ],
-          },
           {
             key: "about_values_arr", label: "Ценности", type: "list", itemLabel: "Ценность",
             itemFields: [
               { name: "title", label: "Заголовок" },
               { name: "text", label: "Текст", multiline: true },
-              { ...ICON_FIELD, options: ["map", "shield", "building", "spark", "check", "chat", "eye"] },
+              { ...ICON_FIELD, options: ["map", "shield", "building", "spark", "check", "chat", "users", "search"] },
             ],
           },
         ],

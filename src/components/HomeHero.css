@@ -1568,7 +1568,6 @@
 .menu-sidebar-logo-area .premium-menu-logo {
   height: 38px;
   width: auto;
-  filter: brightness(0) invert(1);
 }
 
 .menu-sidebar-content {
@@ -1660,7 +1659,44 @@
 .menu-sidebar-socials {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
+}
+
+/* Icon tiles, same shape as the phone and mail icons above them. */
+.menu-sidebar-socials .menu-social-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  text-decoration: none;
+  transition: background 0.22s ease, border-color 0.22s ease, transform 0.22s ease;
+}
+
+.menu-sidebar-socials .menu-social-icon:hover,
+.menu-sidebar-socials .menu-social-icon:focus-visible {
+  border-color: transparent;
+  transform: translateY(-2px);
+}
+
+.menu-sidebar-socials .menu-social-icon.is-telegram:hover,
+.menu-sidebar-socials .menu-social-icon.is-telegram:focus-visible { background: #229ed9; }
+
+.menu-sidebar-socials .menu-social-icon.is-instagram:hover,
+.menu-sidebar-socials .menu-social-icon.is-instagram:focus-visible { background: linear-gradient(45deg, #f9a03f, #e1306c 55%, #833ab4); }
+
+.menu-sidebar-socials .menu-social-icon.is-facebook:hover,
+.menu-sidebar-socials .menu-social-icon.is-facebook:focus-visible { background: #1877f2; }
+
+.menu-sidebar-socials .menu-social-icon.is-linkedin:hover,
+.menu-sidebar-socials .menu-social-icon.is-linkedin:focus-visible { background: #0a66c2; }
+
+.menu-sidebar-socials .menu-social-icon:focus-visible {
+  outline: 2px solid #e46630;
+  outline-offset: 2px;
 }
 
 .menu-sidebar-socials .menu-social-btn-link {

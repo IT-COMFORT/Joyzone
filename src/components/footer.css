@@ -25,11 +25,11 @@
   stroke-linejoin: round;
 }
 
-/* ---------- top row: logo · phone · mail · button ---------- */
+/* ---------- top row: logo · phone · mail ---------- */
 
 .joy-footer-top {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) auto auto auto;
+  grid-template-columns: minmax(150px, 1fr) auto auto;
   align-items: center;
   gap: clamp(18px, 3vw, 44px);
   padding-bottom: 24px;
@@ -113,39 +113,6 @@
   40% { transform: translateY(-3px) scale(1.08); }
   100% { transform: translateY(0); }
 }
-
-.joy-footer-cta {
-  display: inline-flex;
-  min-height: 46px;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 0 22px;
-  border-radius: 999px;
-  background: var(--jf-orange);
-  box-shadow: 0 14px 30px rgba(228, 102, 48, 0.22);
-  color: #ffffff;
-  text-decoration: none;
-  font-size: 17px;
-  font-weight: 900;
-  white-space: nowrap;
-  transition: background 240ms ease, transform 240ms var(--jf-ease), box-shadow 240ms ease;
-}
-
-.joy-footer-cta svg {
-  width: 18px;
-  height: 18px;
-  stroke-width: 2.2;
-  transition: transform 300ms var(--jf-ease);
-}
-
-.joy-footer-cta:hover {
-  background: var(--jf-navy);
-  box-shadow: 0 18px 36px rgba(18, 40, 63, 0.2);
-  transform: translateY(-2px);
-}
-
-.joy-footer-cta:hover svg { transform: translateX(4px); }
 
 /* ---------- columns ---------- */
 
@@ -304,7 +271,6 @@
 
 @media (max-width: 1180px) {
   .joy-footer-top { grid-template-columns: 1fr auto auto; }
-  .joy-footer-cta { grid-column: 1 / -1; justify-self: start; }
 }
 
 @media (max-width: 980px) {
@@ -328,7 +294,6 @@
     gap: 14px;
   }
 
-  .joy-footer-cta { width: 100%; }
   .joy-footer-contact { font-size: 16px; }
   .joy-footer-contact-icon { width: 40px; height: 40px; border-radius: 12px; }
 

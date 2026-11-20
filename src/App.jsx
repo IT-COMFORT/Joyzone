@@ -39,11 +39,13 @@ const named = (loader, name) => lazy(() => loader().then((module) => ({ default:
 const FilterPage = lazy(() => import("./components/FilterPage.jsx"));
 const PartnerOnboarding = lazy(() => import("./components/PartnerOnboarding.jsx"));
 const SpaceDetail = lazy(() => import("./components/SpaceDetail.jsx"));
+const SaleVariants = lazy(() => import("./components/saleVariants/SaleVariants.jsx"));
 const AgentDetail = lazy(() => import("./components/AgentDetail.jsx"));
 const UserProfile = lazy(() => import("./components/UserProfile.jsx"));
 const ProfileQuestionnaireEdit = named(() => import("./components/UserProfile.jsx"), "ProfileQuestionnaireEdit");
 const AccountSettings = lazy(() => import("./components/AccountSettings.jsx"));
 const HostDashboard = lazy(() => import("./components/HostDashboard.jsx"));
+import AccountShell, { isAccountRoute } from "./components/account/AccountShell.jsx";
 const AdminRouteGuard = lazy(() => import("./admin/AdminRouteGuard.jsx"));
 const AboutUsPage = named(() => import("./components/StaticInfoPages.jsx"), "AboutUsPage");
 const PartnerGuidePage = named(() => import("./components/StaticInfoPages.jsx"), "PartnerGuidePage");
@@ -56,6 +58,7 @@ function useUserState() {
     try {
       return {
         isAuthed: Boolean(getStorageItem(STORAGE_KEYS.auth.access)),
+        role: getStorageItem(STORAGE_KEYS.profile.role, ""),
         isPartner: getStorageItem(STORAGE_KEYS.profile.role) === "partner",
         name: getStorageItem(STORAGE_KEYS.profile.name, "Mehmon"),
         email: getStorageItem(STORAGE_KEYS.profile.email, ""),
@@ -79,7 +82,8 @@ function useUserState() {
         ...current,
         id: profile.id ?? current.id,
         isAuthed: true,
-        isPartner: profile.role === "partner",
+        role: profile.role || current.role,
+        isPartner: (profile.role || current.role) === "partner",
         name: profile.full_name || profile.name || current.name,
         email: profile.email || "",
         phone: profile.phone_number || "",
@@ -125,7 +129,9 @@ function useUserState() {
     try {
       if (nextState.isAuthed) {
         setStorageItem(STORAGE_KEYS.auth.authenticated, "true");
-        setStorageItem(STORAGE_KEYS.profile.role, nextState.isPartner ? "partner" : "client");
+        // Keep the real role (admin, moderator…); isPartner alone would turn them into "client".
+        const storedRole = getStorageItem(STORAGE_KEYS.profile.role, "");
+        setStorageItem(STORAGE_KEYS.profile.role, nextState.role || storedRole || (nextState.isPartner ? "partner" : "client"));
         if (nextState.name) setStorageItem(STORAGE_KEYS.profile.name, nextState.name);
         setStorageItem(STORAGE_KEYS.profile.email, nextState.email || "");
         setStorageItem(STORAGE_KEYS.profile.phone, nextState.phone || "");
@@ -258,10 +264,11 @@ function AppContent() {
     if (route !== displayedRoute) {
       const currentScreen = document.querySelector(".route-screen");
       if (currentScreen) {
+        // Inside the account container the page just fades toward the rail; others drop away.
+        const intoRail = currentScreen.classList.contains("acc-page");
         gsap.to(currentScreen, {
-          opacity: 0,
-          y: 20,
-          duration: 0.3,
+          ...(intoRail ? { opacity: 0, x: -16 } : { opacity: 0, y: 20 }),
+          duration: intoRail ? 0.2 : 0.3,
           ease: "power2.in",
           onComplete: () => {
             setDisplayedRoute(route);
@@ -300,13 +307,35 @@ function AppContent() {
         jump(targetEl);
         hashTimers.push(setTimeout(() => jump(targetEl), 900));
       };
-      hashTimers.push(setTimeout(scrollToTarget, 100));
+      // Jump before the page fades in, so the reveal animation plays on the
+      // target section instead of the page top flashing first.
+      const readyEl = document.getElementById(currentHash);
+      if (readyEl) {
+        jump(readyEl);
+        hashTimers.push(setTimeout(() => jump(readyEl), 900));
+      } else {
+        hashTimers.push(setTimeout(scrollToTarget, 100));
+      }
     } else {
       window.scrollTo({ top: 0, behavior: "instant" });
     }
 
     const screen = document.querySelector(".app-route-shell");
-    if (screen) {
+    if (screen && screen.classList.contains("acc-page")) {
+      // Account pages: the container stays still; the new page slides in from the rail side.
+      gsap.killTweensOf(screen);
+      gsap.fromTo(
+        screen,
+        { opacity: 0, x: -24 },
+        {
+          opacity: 1,
+          x: 0,
+          duration: 0.5,
+          ease: "expo.out",
+          onComplete: () => gsap.set(screen, { clearProps: "transform,opacity" }),
+        }
+      );
+    } else if (screen) {
       gsap.killTweensOf(screen);
       gsap.fromTo(
         screen,
@@ -434,6 +463,18 @@ function AppContent() {
     );
   }
 
+  // Design study for the sale listing page; see SaleVariants.jsx.
+  if (displayedRoute === "sale-variants") {
+    return (
+      <>
+        <div className="route-screen app-route-shell">
+          <SaleVariants userState={userState} setUserState={setUserState} />
+        </div>
+        <JoyLoader active={bootLoading} />
+      </>
+    );
+  }
+
   if (displayedRoute.startsWith("space-")) {
     return (
       <>
@@ -469,34 +510,16 @@ function AppContent() {
     );
   }
 
-  if (displayedRoute === "profile") {
+  // Account pages share one frame: the header and the rail stay mounted while
+  // only the container content changes between them.
+  if (isAccountRoute(displayedRoute)) {
+    const page = displayedRoute === "profile" ? <UserProfile userState={userState} setUserState={setUserState} />
+      : displayedRoute === "profile-edit" ? <ProfileQuestionnaireEdit userState={userState} setUserState={setUserState} />
+        : displayedRoute === "settings" ? <AccountSettings userState={userState} setUserState={setUserState} />
+          : <HostDashboard page={displayedRoute.replace("host-", "")} userState={userState} setUserState={setUserState} />;
     return (
       <>
-        <div className="route-screen route-screen-profile app-route-shell">
-          <UserProfile userState={userState} setUserState={setUserState} />
-        </div>
-        <JoyLoader active={bootLoading} />
-      </>
-    );
-  }
-
-  if (displayedRoute === "profile-edit") {
-    return (
-      <>
-        <div className="route-screen route-screen-profile-edit app-route-shell">
-          <ProfileQuestionnaireEdit userState={userState} setUserState={setUserState} />
-        </div>
-        <JoyLoader active={bootLoading} />
-      </>
-    );
-  }
-
-  if (displayedRoute === "settings") {
-    return (
-      <>
-        <div className="route-screen route-screen-settings app-route-shell">
-          <AccountSettings userState={userState} setUserState={setUserState} />
-        </div>
+        <AccountShell userState={userState} setUserState={setUserState}>{page}</AccountShell>
         <JoyLoader active={bootLoading} />
       </>
     );
@@ -529,17 +552,6 @@ function AppContent() {
       <>
         <div className="route-screen route-screen-partner-guide app-route-shell">
           <PartnerGuidePage />
-        </div>
-        <JoyLoader active={bootLoading} />
-      </>
-    );
-  }
-
-  if (displayedRoute.startsWith("host-")) {
-    return (
-      <>
-        <div className="route-screen route-screen-host app-route-shell">
-          <HostDashboard page={displayedRoute.replace("host-", "")} userState={userState} setUserState={setUserState} />
         </div>
         <JoyLoader active={bootLoading} />
       </>
@@ -666,14 +678,13 @@ export default function App() {
       setSessionMessage(message);
       noticeTimer = window.setTimeout(() => setSessionMessage(""), 6000);
     };
-    const handleSessionExpired = () => {
-      showSessionMessage("Сессия истекла, войдите снова.");
+    const handleSessionExpired = (event) => {
+      // Signing out on purpose (here or in another tab) is not an expired session.
+      if (["logout", "remote_logout"].includes(event?.detail?.reason)) return;
+      showSessionMessage("session_expired");
     };
     const handleSessionError = (event) => {
-      showSessionMessage(
-        event.detail?.message
-        || "Не удалось обновить сессию. Проверьте соединение и повторите действие."
-      );
+      showSessionMessage("session_error");
     };
     window.addEventListener("joyzone-session-expired", handleSessionExpired);
     window.addEventListener("joyzone-session-error", handleSessionError);
@@ -686,7 +697,7 @@ export default function App() {
 
   return (
     <LanguageContext.Provider value={{ lang, setLang, content, contentLoading, contentError, isEditMode }}>
-      <SessionExpiredNotice message={sessionMessage} onClose={() => setSessionMessage("")} />
+      <SessionExpiredNotice message={sessionMessage ? content?.[lang]?.[sessionMessage] : ""} onClose={() => setSessionMessage("")} />
       <Suspense fallback={<JoyLoader active={true} />}>
         <AppContent />
       </Suspense>

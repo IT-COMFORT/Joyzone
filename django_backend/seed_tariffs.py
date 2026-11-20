@@ -14,7 +14,7 @@ plans = [
         'name': "Standard",
         'name_ru': "Стандарт",
         'name_en': "Standard",
-        'description': "Boshlang'ich tarif. 1 ta joy joylashtirishga ruxsat.",
+        'description': "Boshlang'ich tarif. 1 ta joy joylashtirish mumkin.",
         'description_ru': "Базовый тариф. Разрешено 1 место.",
         'description_en': "Basic plan. 1 listing allowed.",
         'price': 0,
@@ -94,7 +94,7 @@ plans = [
         'sort_order': 3,
         'features': [
             "10 tagacha faol e'lon",
-            "Premium badge",
+            "Premium belgisi",
             "API integratsiya",
             "Ustuvor moderatsiya",
             "Shaxsiy menejer",

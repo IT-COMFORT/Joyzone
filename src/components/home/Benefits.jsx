@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { cmsList } from "../../utils/cmsLinks.js";
 import "./benefits.css";
+import AccentTitle from "../ui/AccentTitle.jsx";
 
 // "Joyzone qulayliklari": a hub - one big live illustration in the centre,
 // the benefits around it on both sides; it rotates on its own.
@@ -88,7 +89,7 @@ function TrustArt() {
           <small>128 ta sharh</small>
         </div>
       </div>
-      <div className="bf-verified"><span><Check size={11} /></span>Tasdiqlangan hamkor</div>
+      <div className="bf-verified"><span><Check size={11} /></span>Tasdiqlangan agent</div>
       <div className="bf-quote">
         <span className="bf-avatar">MA</span>
         <p>“Hammasi suratdagidek, juda qulay!”</p>
@@ -146,26 +147,6 @@ const ARTS = {
   crown: TariffArt,
   megaphone: BoostArt,
 };
-
-// The brand word gets the accent colour and the curve under its end ("one"),
-// wherever it sits in the translated title.
-function BrandTitle({ text, brand = "Joyzone" }) {
-  const value = String(text || "");
-  const index = value.toLowerCase().indexOf(brand.toLowerCase());
-  if (index < 0) return value;
-  return (
-    <>
-      {value.slice(0, index)}
-      <span className="bf-brand">
-        {value.slice(index, index + brand.length)}
-        <svg className="bf-curve" width="80" height="10" viewBox="0 0 80 10" fill="none" aria-hidden="true">
-          <path d="M2 8C22 1 58 1 78 8" stroke="#E46630" strokeWidth="3" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-        </svg>
-      </span>
-      {value.slice(index + brand.length)}
-    </>
-  );
-}
 
 const ICON_PATHS = {
   interface: ["M4 5h16v12H4z", "M8 21h8", "M12 17v4", "M8 9h4M8 12h8"],
@@ -238,7 +219,7 @@ export function BenefitsSection({ cms = {} }) {
   return (
     <section ref={sectionRef} className={`bf ${inView ? "is-live" : ""} ${running ? "is-running" : ""}`} id="about">
       <header className="bf-head">
-        <h2><BrandTitle text={cms.about_title || "Joyzone qulayliklari"} /></h2>
+        <h2><AccentTitle text={cms.about_title || "Joyzone qulayliklari"} highlight="Joyzone" /></h2>
         <p>{cms.about_text || "Har kim uchun oddiy va qulay platforma"}</p>
       </header>
 

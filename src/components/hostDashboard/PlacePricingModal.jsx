@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import api, { getApiErrorMessage } from "../../api/client.js";
-import { DashboardIcon } from "./shared.jsx";
+import { DashboardIcon, discountText } from "./shared.jsx";
+import { useText } from "../../context/LanguageContext.jsx";
+import { PowSelect } from "../partnerOnboarding/PowSelect.jsx";
 
 const PRICE_TIERS = [
-  { key: "price_hourly", label: "За час", hint: "Почасовая аренда", placeholder: "50 000" },
-  { key: "price_daily", label: "За день", hint: "С открытия до закрытия", placeholder: "250 000" },
-  { key: "price_weekly", label: "За неделю", hint: "7 дней подряд", placeholder: "1 500 000" },
-  { key: "price_monthly", label: "За месяц", hint: "Долгосрочная аренда", placeholder: "5 000 000" },
+  { key: "price_hourly", hint: "pm_hint_hourly", placeholder: "50 000" },
+  { key: "price_daily", hint: "pm_hint_daily", placeholder: "250 000" },
+  { key: "price_weekly", hint: "pm_hint_weekly", placeholder: "1 500 000" },
+  { key: "price_monthly", hint: "pm_hint_monthly", placeholder: "5 000 000" },
 ];
 
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => (
@@ -42,6 +44,7 @@ function placeCategoryId(place) {
 
 // Quick editor for the commercial terms of one place: prices, hours, booking mode, discounts.
 export function PlacePricingModal({ place, onClose, onSaved }) {
+  const { t, lang } = useText();
   const [prices, setPrices] = useState(() => initialPrices(place));
   const [enabled, setEnabled] = useState(() => {
     const start = initialPrices(place);
@@ -84,13 +87,13 @@ export function PlacePricingModal({ place, onClose, onSaved }) {
   const problems = useMemo(() => {
     const list = [];
     const active = PRICE_TIERS.filter(({ key }) => enabled[key]);
-    if (!active.length) list.push("Включите хотя бы один формат цены.");
-    active.forEach(({ key, label }) => {
-      if (!(Number(prices[key]) > 0)) list.push(`Укажите сумму «${label}».`);
+    if (!active.length) list.push(t("pm_err_format"));
+    active.forEach(({ key }) => {
+      if (!(Number(prices[key]) > 0)) list.push(t("pm_err_amount", { label: t(key) }));
     });
-    if (closesAt <= opensAt) list.push("Время закрытия должно быть позже открытия.");
+    if (closesAt <= opensAt) list.push(t("pm_time_err"));
     return list;
-  }, [enabled, prices, opensAt, closesAt]);
+  }, [enabled, prices, opensAt, closesAt, t]);
 
   const save = async () => {
     if (problems.length) {
@@ -117,7 +120,7 @@ export function PlacePricingModal({ place, onClose, onSaved }) {
       onSaved?.(response.data);
     } catch (err) {
       setConfirmModeration(false);
-      setError(getApiErrorMessage(err, "Не удалось сохранить изменения."));
+      setError(getApiErrorMessage(err, t("pm_err_save"), lang));
     } finally {
       setSaving(false);
     }
@@ -132,18 +135,18 @@ export function PlacePricingModal({ place, onClose, onSaved }) {
       <div className="hpm" role="dialog" aria-modal="true" aria-labelledby="hpm-title" onClick={(event) => event.stopPropagation()}>
         <header className="hpm-head">
           <div>
-            <span>Цены и условия</span>
+            <span>{t("pm_kicker")}</span>
             <h2 id="hpm-title">{place?.title}</h2>
           </div>
-          <button type="button" className="hpm-close" onClick={onClose} disabled={saving} aria-label="Закрыть">
+          <button type="button" className="hpm-close" onClick={onClose} disabled={saving} aria-label={t("cab_close")}>
             <DashboardIcon type="close" />
           </button>
         </header>
 
         <div className="hpm-body">
           <section className="hpm-section">
-            <h3>Стоимость</h3>
-            <p>Включите форматы, в которых сдаёте место, и укажите цену в сумах. Клиент увидит только включённые.</p>
+            <h3>{t("pm_cost")}</h3>
+            <p>{t("pm_cost_text")}</p>
             <div className="hpm-prices">
               {PRICE_TIERS.map((tier) => {
                 const isOn = enabled[tier.key];
@@ -157,8 +160,8 @@ export function PlacePricingModal({ place, onClose, onSaved }) {
                       />
                       <i aria-hidden="true" />
                       <span>
-                        <strong>{tier.label}</strong>
-                        <small>{tier.hint}</small>
+                        <strong>{t(tier.key)}</strong>
+                        <small>{t(tier.hint)}</small>
                       </span>
                     </label>
                     <div className="hpm-money">
@@ -166,11 +169,11 @@ export function PlacePricingModal({ place, onClose, onSaved }) {
                         inputMode="numeric"
                         disabled={!isOn}
                         value={isOn ? groupDigits(prices[tier.key]) : ""}
-                        placeholder={isOn ? tier.placeholder : "выключено"}
+                        placeholder={isOn ? tier.placeholder : t("pm_disabled")}
                         onChange={(event) => setPrices((current) => ({ ...current, [tier.key]: digitsOnly(event.target.value) }))}
-                        aria-label={`Цена ${tier.label}`}
+                        aria-label={t("pm_price_of", { label: t(tier.key) })}
                       />
-                      <span>сум</span>
+                      <span>{t("cab_sum")}</span>
                     </div>
                   </div>
                 );
@@ -179,42 +182,38 @@ export function PlacePricingModal({ place, onClose, onSaved }) {
           </section>
 
           <section className="hpm-section">
-            <h3>Часы работы</h3>
-            <p>Почасовые брони доступны только в это время, дневные — с открытия до закрытия.</p>
+            <h3>{t("pm_hours")}</h3>
+            <p>{t("pm_hours_text")}</p>
             <div className="hpm-hours">
-              <label>
-                Открытие
-                <select value={opensAt} onChange={(event) => setOpensAt(event.target.value)}>
-                  {TIME_OPTIONS.map((time) => <option key={time} value={time}>{time}</option>)}
-                </select>
-              </label>
+              <div className="hpm-hours-field">
+                <span>{t("pm_opens")}</span>
+                <PowSelect compact ariaLabel={t("pm_opens")} value={opensAt} onChange={setOpensAt} options={TIME_OPTIONS.map((time) => ({ value: time, label: time }))} />
+              </div>
               <span aria-hidden="true">—</span>
-              <label>
-                Закрытие
-                <select value={closesAt} onChange={(event) => setClosesAt(event.target.value)}>
-                  {[...TIME_OPTIONS.slice(1), "23:59"].map((time) => <option key={time} value={time}>{time}</option>)}
-                </select>
-              </label>
+              <div className="hpm-hours-field">
+                <span>{t("pm_closes")}</span>
+                <PowSelect compact ariaLabel={t("pm_closes")} value={closesAt} onChange={setClosesAt} options={[...TIME_OPTIONS.slice(1), "23:59"].map((time) => ({ value: time, label: time }))} />
+              </div>
             </div>
-            {closesAt <= opensAt ? <small className="hpm-field-error">Время закрытия должно быть позже открытия.</small> : null}
+            {closesAt <= opensAt ? <small className="hpm-field-error">{t("pm_time_err")}</small> : null}
           </section>
 
           <section className="hpm-section">
-            <h3>Как принимать брони</h3>
+            <h3>{t("pm_mode")}</h3>
             <div className="hpm-modes">
               <button type="button" className={bookingType === "request" ? "is-active" : ""} onClick={() => setBookingType("request")}>
-                <strong>По запросу</strong>
-                <small>Вы подтверждаете каждую бронь сами</small>
+                <strong>{t("pm_request")}</strong>
+                <small>{t("pm_request_text")}</small>
               </button>
               <button type="button" className={bookingType === "instant" ? "is-active" : ""} onClick={() => setBookingType("instant")}>
-                <strong>Мгновенно</strong>
-                <small>Бронь подтверждается сразу</small>
+                <strong>{t("pm_instant")}</strong>
+                <small>{t("pm_instant_text")}</small>
               </button>
             </div>
           </section>
 
           <section className="hpm-section">
-            <h3>Скидки</h3>
+            <h3>{t("pm_discounts")}</h3>
             {availableDiscounts.length ? (
               <div className="hpm-discounts">
                 {availableDiscounts.map((item) => {
@@ -223,15 +222,15 @@ export function PlacePricingModal({ place, onClose, onSaved }) {
                     <button key={item.id} type="button" className={isOn ? "is-active" : ""} onClick={() => toggleDiscount(item.id)} aria-pressed={isOn}>
                       <b>−{item.percent}%</b>
                       <span>
-                        <strong>{item.name_ru}</strong>
-                        {item.description_ru ? <small>{item.description_ru}</small> : null}
+                        <strong>{discountText(item, "name", lang)}</strong>
+                        {discountText(item, "description", lang) ? <small>{discountText(item, "description", lang)}</small> : null}
                       </span>
                       <i aria-hidden="true" />
                     </button>
                   );
                 })}
               </div>
-            ) : <p>Для этой категории скидок пока нет — их добавляет администратор.</p>}
+            ) : <p>{t("pm_no_discounts")}</p>}
           </section>
         </div>
 
@@ -239,18 +238,18 @@ export function PlacePricingModal({ place, onClose, onSaved }) {
           {error ? <div className="hpm-error" role="alert">{error}</div> : null}
           {confirmModeration ? (
             <div className="hpm-confirm">
-              <strong>Место уйдёт на повторную модерацию</strong>
-              <span>Пока модератор не проверит изменения, место не будет видно в поиске.</span>
+              <strong>{t("pm_confirm_title")}</strong>
+              <span>{t("pm_confirm_text")}</span>
             </div>
           ) : needsModeration ? (
-            <p className="hpm-note">После сохранения место снова пройдёт модерацию.</p>
+            <p className="hpm-note">{t("pm_note")}</p>
           ) : null}
           <div className="hpm-actions">
             <button type="button" className="hpm-btn" onClick={confirmModeration ? () => setConfirmModeration(false) : onClose} disabled={saving}>
-              {confirmModeration ? "Назад" : "Отмена"}
+              {confirmModeration ? t("cab_back") : t("cab_cancel")}
             </button>
             <button type="button" className="hpm-btn is-primary" onClick={save} disabled={saving}>
-              {saving ? "Сохраняем..." : confirmModeration ? "Да, сохранить" : "Сохранить"}
+              {saving ? t("cab_saving") : confirmModeration ? t("pm_confirm_save") : t("cab_save")}
             </button>
           </div>
         </footer>
